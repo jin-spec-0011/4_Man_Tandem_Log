@@ -22,10 +22,10 @@
         <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200/60">
             <div>
                 <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">🏭 Tandem Ops</h1>
-                <p class="text-xs text-slate-500 mt-0.5">리더: 김진세 | 4인 체제 (오토 6 / 메인 4)</p>
+                <p class="text-xs text-slate-500 mt-0.5">리더: 김진세 | 4인 체제 (오토 6 / 메인 8)</p>
             </div>
-            <div class="text-center bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap">
-                Firebase Online
+            <div id="db-status" class="text-center bg-amber-50 border border-amber-200 text-amber-700 font-bold text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap">
+                Connecting...
             </div>
         </header>
 
@@ -40,7 +40,10 @@
         <!-- [PART 1] 일일 입력 섹션 -->
         <section id="tab-daily" class="space-y-4 no-print">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-4">
-                <h2 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">📅 날짜 및 교대 확인</h2>
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">📅 날짜 및 교대 확인</h2>
+                    <button onclick="saveLeaveOnlyToRealtime()" class="px-3 py-1.5 bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-amber-600 transition">🗓️ 연차/근태만 미리 저장</button>
+                </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -48,15 +51,15 @@
                         <input type="date" id="log-date" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
-                        <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">근무 형태 자동 표기</div>
+                        <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">근무 조 자동 표기</div>
                         <div id="shift-type-display" class="font-black text-blue-600 text-xs sm:text-sm">-</div>
                         <div id="work-hours-display" class="text-[11px] text-slate-500 mt-0.5 font-semibold">-</div>
                     </div>
                 </div>
 
-                <!-- 팀원 근태 사유 선택 (기타 수기입력 포함) -->
+                <!-- 팀원 근태 사유 선택 -->
                 <div class="space-y-3">
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">팀원 근태 사유 선택</label>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">팀원 근태 사유 선택 (월초 연차 계획 입력 가능)</label>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                         
                         <!-- 김장환 -->
@@ -124,8 +127,8 @@
 
                 <!-- 공정 및 장비 이슈 -->
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">장비 및 공정 이슈 (오토 6 / 메인 4)</label>
-                    <textarea id="issue-text" rows="4" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항...&#10;[T-04] 장비 에러 및 조치...&#10;[T-1 권의환] 특이사항..."></textarea>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">장비 및 공정 이슈 (오토 6 / 메인 8)</label>
+                    <textarea id="issue-text" rows="4" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항...&#10;[T-01] 제네레이터 O2 퍼지...&#10;[T-04S] N2 alarm..."></textarea>
                 </div>
 
                 <!-- 행정 완료 체크 -->
@@ -138,7 +141,7 @@
                     </label>
                 </div>
 
-                <button onclick="saveLogToFirebase()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md hover:bg-blue-700 transition">데이터 저장 및 반영</button>
+                <button onclick="saveLogToRealtime()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md hover:bg-blue-700 transition">전체 데이터 저장 및 반영</button>
             </div>
         </section>
 
@@ -156,7 +159,7 @@
                 <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-400 pb-1 border-b">
                     <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
                 </div>
-                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center">
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1">
                     <!-- 동적 생성 -->
                 </div>
             </div>
@@ -199,10 +202,10 @@
         </section>
     </div>
 
-    <!-- Firebase SDK 및 로직 연동 -->
+    <!-- Firebase Realtime Database SDK 연동 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA2LBZMHgslX41qmbjZ0jKh1KJT-iKz5bY",
@@ -210,13 +213,17 @@
             projectId: "qcells-tandem-ops",
             storageBucket: "qcells-tandem-ops.firebasestorage.app",
             messagingSenderId: "909705800417",
-            appId: "1:909705800417:web:1d20fff5bb8a566ce0e5a0"
+            appId: "1:909705800417:web:1d20fff5bb8a566ce0e5a0",
+            databaseURL: "https://qcells-tandem-ops-default-rtdb.firebaseio.com" 
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const database = getDatabase(app);
 
-        window.tandemDb = { db, collection, doc, setDoc, getDocs };
+        window.tandemRtdb = { database, ref, set, get, child };
+        
+        document.getElementById('db-status').className = "text-center bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap";
+        document.getElementById('db-status').innerText = "RTDB Online";
     </script>
 
     <script>
@@ -226,20 +233,25 @@
         let cachedLogs = {};
 
         window.addEventListener('DOMContentLoaded', () => {
+            const localData = localStorage.getItem('tandem_rtdb_logs');
+            if(localData) {
+                cachedLogs = JSON.parse(localData);
+            }
             fetchAllLogs();
         });
 
         async function fetchAllLogs() {
-            if(!window.tandemDb) return;
+            if(!window.tandemRtdb) return;
             try {
-                const { db, collection, getDocs } = window.tandemDb;
-                const querySnapshot = await getDocs(collection(db, "daily_logs"));
-                cachedLogs = {};
-                querySnapshot.forEach((doc) => {
-                    cachedLogs[doc.id] = doc.data();
-                });
+                const { database, ref, get, child } = window.tandemRtdb;
+                const dbRef = ref(database);
+                const snapshot = await get(child(dbRef, "daily_logs"));
+                if (snapshot.exists()) {
+                    cachedLogs = snapshot.val() || {};
+                    localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
+                }
             } catch (e) {
-                console.error("데이터 로드 실패:", e);
+                console.warn("데이터 로드 중:", e);
             }
         }
 
@@ -282,11 +294,8 @@
         function onLeaveChange(name) {
             const selectVal = document.getElementById(`leave-${name}`).value;
             const customInput = document.getElementById(`custom-leave-${name}`);
-            if(selectVal === '기타') {
-                customInput.classList.remove('hidden');
-            } else {
-                customInput.classList.add('hidden');
-            }
+            if(selectVal === '기타') customInput.classList.remove('hidden');
+            else customInput.classList.add('hidden');
         }
 
         function getLogData() {
@@ -295,9 +304,7 @@
 
             const getLeaveValue = (name) => {
                 const val = document.getElementById(`leave-${name}`).value;
-                if(val === '기타') {
-                    return document.getElementById(`custom-leave-${name}`).value || '기타';
-                }
+                if(val === '기타') return document.getElementById(`custom-leave-${name}`).value || '기타';
                 return val;
             };
 
@@ -307,28 +314,89 @@
                 "김현진": getLeaveValue("김현진")
             };
             const issues = document.getElementById('issue-text').value;
-            const sheet = document.getElementById('check-sheet').checked ? '완료' : '미완료';
-            const stock = document.getElementById('check-stock').checked ? '완료' : '미완료';
+            const sheet = document.getElementById('check-sheet').checked;
+            const stock = document.getElementById('check-stock').checked;
 
             return { date, shift, leaves, issues, sheet, stock };
         }
 
-        async function saveLogToFirebase() {
+        // 전체 데이터 저장 (RTDB)
+        async function saveLogToRealtime() {
             const data = getLogData();
-            if(!window.tandemDb) {
-                alert('Firebase 연결 중입니다. 잠시 후 다시 시도해주세요.');
+            
+            // 기존 캐시와 병합
+            let finalData = data;
+            if(cachedLogs[data.date]) {
+                const existing = cachedLogs[data.date];
+                finalData = {
+                    date: data.date,
+                    shift: data.shift,
+                    leaves: { ...existing.leaves, ...data.leaves },
+                    issues: data.issues ? data.issues : (existing.issues || ""),
+                    sheet: data.sheet || existing.sheet,
+                    stock: data.stock || existing.stock
+                };
+            }
+
+            cachedLogs[data.date] = finalData;
+            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
+
+            if(!window.tandemRtdb) {
+                alert('로컬에 저장되었습니다.');
+                switchTab('export');
                 return;
             }
+
             try {
-                const { db, doc, setDoc } = window.tandemDb;
-                await setDoc(doc(db, "daily_logs", data.date), data);
-                cachedLogs[data.date] = data;
-                alert('Firebase 클라우드에 성공적으로 저장되었습니다!');
+                const { database, ref, set } = window.tandemRtdb;
+                await set(ref(database, 'daily_logs/' + data.date.replace(/-/g, '_')), finalData);
+                alert('Realtime Database 클라우드에 성공적으로 저장되었습니다!');
                 switchTab('export');
             } catch (e) {
                 console.error("저장 오류:", e);
-                alert('저장 중 오류가 발생했습니다.');
+                alert('저장 실패 (로컬 백업 완료): ' + e.message);
+                switchTab('export');
             }
+        }
+
+        // 연차/근태만 미리 저장하기 (RTDB)
+        async function saveLeaveOnlyToRealtime() {
+            const date = document.getElementById('log-date').value;
+            if(!date) { alert('날짜를 선택해주세요.'); return; }
+            
+            const getLeaveValue = (name) => {
+                const val = document.getElementById(`leave-${name}`).value;
+                if(val === '기타') return document.getElementById(`custom-leave-${name}`).value || '기타';
+                return val;
+            };
+
+            const leaves = {
+                "김장환": getLeaveValue("김장환"),
+                "권의환": getLeaveValue("권의환"),
+                "김현진": getLeaveValue("김현진")
+            };
+            const shift = calculateAutoShift(date);
+
+            let finalData;
+            if(cachedLogs[date]) {
+                finalData = { ...cachedLogs[date], leaves: { ...cachedLogs[date].leaves, ...leaves } };
+            } else {
+                finalData = { date, shift, leaves, issues: "", sheet: false, stock: false };
+            }
+
+            cachedLogs[date] = finalData;
+            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
+
+            if(window.tandemRtdb) {
+                try {
+                    const { database, ref, set } = window.tandemRtdb;
+                    await set(ref(database, 'daily_logs/' + date.replace(/-/g, '_')), finalData);
+                } catch (e) {
+                    console.warn("연차 클라우드 저장 예외:", e);
+                }
+            }
+
+            alert(`[${date}] 연차 및 근태 계획이 저장되었습니다!`);
         }
 
         async function loadHistory() {
@@ -346,7 +414,7 @@
                 return `
                     <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
                         <div class="flex justify-between items-center text-xs font-bold text-blue-600 border-b pb-1">
-                            <span>📅 ${date} (${log.shift.shiftType})</span>
+                            <span>📅 ${log.date || date} (${log.shift ? log.shift.shiftType : '근무'})</span>
                         </div>
                         <p class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">${log.issues || '이슈 내용 없음'}</p>
                     </div>
@@ -365,25 +433,35 @@
 
             let gridHtml = '';
             for(let i=0; i<firstDay; i++) {
-                gridHtml += `<div></div>`;
+                gridHtml += `<div class="min-h-[90px]"></div>`;
             }
 
             for(let d=1; d<=lastDate; d++) {
                 const mm = String(month + 1).padStart(2, '0');
                 const dd = String(d).padStart(2, '0');
                 const dateStr = `${year}-${mm}-${dd}`;
-                const log = cachedLogs[dateStr];
+                
+                // 날짜 키 매칭 (하이픈 또는 언더바 모두 대응)
+                const log = cachedLogs[dateStr] || cachedLogs[dateStr.replace(/-/g, '_')];
 
-                let badge = '';
+                let contentHtml = '';
                 if(log) {
-                    badge = `<div class="w-1.5 h-1.5 bg-blue-600 rounded-full mx-auto mt-1"></div>`;
+                    let leaveTags = '';
+                    if(log.leaves) {
+                        leaveTags = Object.entries(log.leaves)
+                            .filter(([k, v]) => v && v !== '정상근무')
+                            .map(([k, v]) => `<span class="bg-blue-100 text-blue-700 px-1 rounded text-[9px] font-bold block truncate">${k.slice(0,2)}:${v}</span>`)
+                            .join('');
+                    }
+                    let issuePreview = log.issues ? `<span class="text-[9px] text-slate-500 block truncate mt-0.5">⚠️ 이슈있음</span>` : '';
+                    contentHtml = `<div class="mt-1 space-y-0.5 overflow-hidden text-left">${leaveTags}${issuePreview}</div>`;
                 }
 
                 gridHtml += `
-                    <div onclick="alert('${dateStr} 일지 확인\\n${log ? (log.issues ? log.issues.substring(0,30) + '...' : '이슈 없음') : '작성된 일지 없음'}')" 
-                         class="p-2 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-between h-14 ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
-                        <span class="text-xs font-bold text-slate-700">${d}</span>
-                        ${badge}
+                    <div onclick="alert('${dateStr}\\n${log ? JSON.stringify(log.leaves) : '기록 없음'}')" 
+                         class="p-1.5 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-start min-h-[90px] overflow-hidden ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
+                        <span class="text-xs font-bold text-slate-700 text-left">${d}</span>
+                        ${contentHtml}
                     </div>
                 `;
             }
@@ -398,11 +476,13 @@
         function updatePreview() {
             const data = getLogData();
             let leaveStr = Object.entries(data.leaves).filter(([k,v]) => v !== '정상근무').map(([k,v]) => `${k}(${v})`).join(', ') || '없음';
+            const sheetText = data.sheet ? '완료' : '미완료';
+            const stockText = data.stock ? '완료' : '미완료';
             
             const text = `[현장 일일 보고] (${data.date})
 - 근무형태: ${data.shift.shiftType} (${data.shift.workHours})
 - 근태사유: ${leaveStr}
-- 행정상태: 실적마감(${data.sheet}) / 재고관리(${data.stock})
+- 행정상태: 실적마감(${sheetText}) / 재고관리(${stockText})
 - 장비 및 공정 이슈:
 ${data.issues || '특이사항 없음'}`;
 
@@ -416,8 +496,10 @@ ${data.issues || '특이사항 없음'}`;
         function exportExcel() {
             const data = getLogData();
             let leaveStr = Object.entries(data.leaves).map(([k,v]) => `${k}:${v}`).join('/');
+            const sheetText = data.sheet ? '완료' : '미완료';
+            const stockText = data.stock ? '완료' : '미완료';
             const csvContent = "\uFEFF" + "날짜,근무조,근태사유,실적마감,재고관리,이슈내용\n" +
-                `"${data.date}","${data.shift.shiftType}","${leaveStr}","${data.sheet}","${data.stock}","${data.issues.replace(/\n/g, ' ')}"`;
+                `"${data.date}","${data.shift.shiftType}","${leaveStr}","${sheetText}","${stockText}","${data.issues.replace(/\n/g, ' ')}"`;
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
