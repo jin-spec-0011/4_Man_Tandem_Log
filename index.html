@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>현장 리더 통합 관리 시스템 (김진세)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body { background: white; color: black; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            box-shadow { box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 pb-12">
+
+    <div class="max-w-3xl mx-auto p-4 sm:p-6">
+        <!-- 헤더 -->
+        <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm">
+            <div>
+                <h1 class="text-xl font-bold text-slate-900">🏭 현장 리더 통합 관리</h1>
+                <p class="text-xs text-slate-500">리더: 김진세 | 4인 체제 (오토메이션 6 / 메인 4)</p>
+            </div>
+            <span class="text-xs bg-emerald-100 text-emerald-700 font-semibold px-3 py-1 rounded-full">Online / Local</span>
+        </header>
+
+        <!-- 탭 메뉴 -->
+        <div class="flex gap-2 mb-6 no-print">
+            <button onclick="switchTab('daily')" id="btn-daily" class="flex-1 py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-sm transition">일일 입력</button>
+            <button onclick="switchTab('export')" id="btn-export" class="flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">공유 및 출력</button>
+        </div>
+
+        <!-- [PART 1] 일일 입력 섹션 -->
+        <section id="tab-daily" class="space-y-4 no-print">
+            <div class="bg-white p-5 rounded-2xl shadow-sm space-y-4">
+                <h2 class="font-bold text-base text-slate-800 flex items-center gap-2">📅 날짜 및 자동 교대 확인</h2>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">날짜 선택</label>
+                        <input type="date" id="log-date" class="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
+                        <div class="text-xs text-slate-400 font-medium">자동 계산된 근무 형태</div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span id="shift-type-display" class="font-bold text-blue-600">-</span>
+                            <span class="text-slate-300">|</span>
+                            <span id="work-hours-display" class="text-xs font-semibold text-slate-600">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 팀원 근태 -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">팀원 휴무 및 교육 현황 (체크 시 특이사항 반영)</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center gap-2 p-2.5 border border-slate-200 rounded-xl text-xs font-medium cursor-pointer hover:bg-slate-50">
+                            <input type="checkbox" name="absence" value="김장환" class="rounded text-blue-600"> 김장환 (T-04)
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 border border-slate-200 rounded-xl text-xs font-medium cursor-pointer hover:bg-slate-50">
+                            <input type="checkbox" name="absence" value="권의환" class="rounded text-blue-600"> 권의환 (T-1)
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 border border-slate-200 rounded-xl text-xs font-medium cursor-pointer hover:bg-slate-50">
+                            <input type="checkbox" name="absence" value="김현진" class="rounded text-blue-600"> 김현진 (T-04)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 공정 및 장비 이슈 -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">장비 및 공정 이슈 (오토메이션 6대 / 메인 4대)</label>
+                    <textarea id="issue-text" rows="4" class="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="[T-3 김진세] 특이사항...&#10;[T-04] 장비 에러 및 조치...&#10;[T-1 권의환] 특이사항..."></textarea>
+                </div>
+
+                <!-- 행정 완료 체크 -->
+                <div class="flex gap-4 pt-1">
+                    <label class="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                        <input type="checkbox" id="check-sheet" class="rounded text-blue-600"> 일별 시트 정리 완료
+                    </label>
+                    <label class="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                        <input type="checkbox" id="check-stock" class="rounded text-blue-600"> 셀 재고 관리 완료
+                    </label>
+                </div>
+
+                <button onclick="saveLog()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-sm hover:bg-blue-700 transition">데이터 저장 및 반영</button>
+            </div>
+        </section>
+
+        <!-- [PART 2] 공유 및 출력 섹션 -->
+        <section id="tab-export" class="hidden space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm space-y-4">
+                <h2 class="font-bold text-base text-slate-800">📤 외부 공유 및 리포트 추출</h2>
+                <p class="text-xs text-slate-500">입력된 데이터를 바탕으로 카카오톡 전송용 텍스트를 복사하거나, 엑셀/프린트용 보고서를 생성합니다.</p>
+                
+                <div class="space-y-2.5">
+                    <button onclick="copyKakaoText()" class="w-full p-3 bg-amber-300 text-slate-900 font-bold text-xs rounded-xl hover:bg-amber-400 transition flex items-center justify-center gap-2">
+                        💬 카카오톡 전달용 텍스트 복사
+                    </button>
+                    <button onclick="exportExcel()" class="w-full p-3 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition flex items-center justify-center gap-2">
+                        📊 엑셀(CSV) 파일 다운로드
+                    </button>
+                    <button onclick="window.print()" class="w-full p-3 bg-slate-800 text-white font-bold text-xs rounded-xl hover:bg-slate-900 transition flex items-center justify-center gap-2">
+                        🖨️ A4 프린트 / PDF 저장
+                    </button>
+                </div>
+            </div>
+
+            <!-- 프린트 미리보기 및 요약 박스 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                <h3 class="font-bold text-sm text-slate-700 border-b pb-2">📋 실시간 요약 미리보기</h3>
+                <div id="preview-box" class="text-xs text-slate-600 space-y-1 font-mono bg-slate-50 p-3 rounded-xl">
+                    날짜를 선택하고 데이터를 입력해주세요.
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 오늘 날짜 기본 세팅
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('log-date').value = todayStr;
+
+        // 탭 전환 함수
+        function switchTab(tabName) {
+            if (tabName === 'daily') {
+                document.getElementById('tab-daily').classList.remove('hidden');
+                document.getElementById('tab-export').classList.add('hidden');
+                document.getElementById('btn-daily').className = "flex-1 py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-sm transition";
+                document.getElementById('btn-export').className = "flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
+            } else {
+                document.getElementById('tab-daily').classList.add('hidden');
+                document.getElementById('tab-export').classList.remove('hidden');
+                document.getElementById('btn-export').className = "flex-1 py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-sm transition";
+                document.getElementById('btn-daily').className = "flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
+                updatePreview();
+            }
+        }
+
+        // 자동 교대 주기 계산 엔진 (기준일: 2026-09-07 주간조 시작)
+        function calculateShift(selectedDateStr) {
+            const anchorDate = new Date('2026-09-07');
+            const currentDate = new Date(selectedDateStr);
+            const diffTime = currentDate.getTime() - anchorDate.getTime();
+            const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+            const cycleIndex = ((diffWeeks % 2) + 2) % 2; 
+            const isNightShift = (cycleIndex === 1);
+            
+            const dayOfWeek = currentDate.getDay(); // 0:일, 1:월 ... 6:토
+            let shiftType = "";
+            let workHours = "";
+            let isWorkingDay = true;
+
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                isWorkingDay = false;
+                shiftType = "휴무 (주말)";
+                workHours = "휴무";
+            } else if (isNightShift) {
+                shiftType = "야간조";
+                workHours = "20:00 ~ 08:00";
+            } else {
+                shiftType = "주간조";
+                if (dayOfWeek === 5) { // 금요일 단축
+                    workHours = "08:00 ~ 17:00 (단축)";
+                } else {
+                    workHours = "08:00 ~ 20:00";
+                }
+            }
+            return { shiftType, workHours, isWorkingDay };
+        }
+
+        // 날짜 변경 시 자동 계산 반영
+        document.getElementById('log-date').addEventListener('change', function(e) {
+            const res = calculateShift(e.target.value);
+            document.getElementById('shift-type-display').innerText = res.shiftType;
+            document.getElementById('work-hours-display').innerText = res.workHours;
+        });
+
+        // 초기 실행
+        const initialRes = calculateShift(todayStr);
+        document.getElementById('shift-type-display').innerText = initialRes.shiftType;
+        document.getElementById('work-hours-display').innerText = initialRes.workHours;
+
+        // 데이터 수집 함수
+        function getLogData() {
+            const date = document.getElementById('log-date').value;
+            const shift = calculateShift(date);
+            const absences = Array.from(document.querySelectorAll('input[name="absence"]:checked')).map(el => el.value);
+            const issues = document.getElementById('issue-text').value;
+            const sheet = document.getElementById('check-sheet').checked ? '완료' : '미완료';
+            const stock = document.getElementById('check-stock').checked ? '완료' : '미완료';
+
+            return { date, shift, absences, issues, sheet, stock };
+        }
+
+        // 저장 버튼
+        function saveLog() {
+            alert('일일 현장 데이터가 정상적으로 반영되었습니다.');
+            switchTab('export');
+        }
+
+        // 미리보기 및 카카오톡 텍스트 생성
+        function updatePreview() {
+            const data = getLogData();
+            const absenceStr = data.absences.length > 0 ? data.absences.join(', ') : '없음';
+            
+            const text = `[현장 일일 보고] (${data.date})
+- 근무형태: ${data.shift.shiftType} (${data.shift.workHours})
+- 근태 특이사항: ${absenceStr}
+- 행정 상태: 시트정리(${data.sheet}) / 재고관리(${data.stock})
+- 장비 및 공정 이슈:
+${data.issues || '특이사항 없음'}`;
+
+            document.getElementById('preview-box').innerText = text;
+        }
+
+        function copyKakaoText() {
+            const text = document.getElementById('preview-box').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('카카오톡 전달용 텍스트가 복사되었습니다!');
+            });
+        }
+
+        // 엑셀(CSV) 다운로드
+        function exportExcel() {
+            const data = getLogData();
+            const csvContent = "\uFEFF" + "날짜,근무조,근무시간,근태특이사항,시트정리,재고관리,이슈내용\n" +
+                `"${data.date}","${data.shift.shiftType}","${data.shift.workHours}","${data.absences.join('/')}","${data.sheet}","${data.stock}","${data.issues.replace(/\n/g, ' ')}"`;
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `현장보고_${data.date}.csv`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
