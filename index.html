@@ -7,10 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
-            body { background: white; color: black; }
+            body { background: white !important; color: black !important; }
             .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, .print-hide { display: none !important; }
-            #print-area { display: block !important; border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
-            #preview-box { background: white !important; border: 1px solid #cbd5e1 !important; font-size: 14px !important; }
+            #a4-checklist-print-area { display: block !important; width: 100% !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
+            #print-area { display: none !important; }
         }
         input[type="date"] { -webkit-appearance: none; appearance: none; background-color: #fff; }
     </style>
@@ -41,31 +41,57 @@
         <section id="tab-daily" class="space-y-4 no-print">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-4">
                 <div class="flex justify-between items-center">
-                    <h2 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">📅 날짜 및 교대 확인</h2>
-                    <button onclick="saveLeaveOnlyToRealtime()" class="px-3 py-1.5 bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-amber-600 transition">🗓️ 연차/근태만 미리 저장</button>
+                    <h2 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">📅 기간 및 교대 확인</h2>
+                    <button onclick="saveLeavePeriodToRealtime()" class="px-3 py-1.5 bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-amber-600 transition">🗓️ 기간별 연차/근태 저장</button>
                 </div>
                 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- 날짜 선택 (기간 설정: 시작일 ~ 종료일) -->
+                <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">날짜 선택</label>
-                        <input type="date" id="log-date" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">시작일</label>
+                        <input type="date" id="log-start-date" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
-                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
-                        <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">근무 조 자동 표기</div>
-                        <div id="shift-type-display" class="font-black text-blue-600 text-xs sm:text-sm">-</div>
-                        <div id="work-hours-display" class="text-[11px] text-slate-500 mt-0.5 font-semibold">-</div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">종료일 (하루 이상 선택 가능)</label>
+                        <input type="date" id="log-end-date" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
 
-                <!-- 팀원 근태 사유 선택 -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
+                    <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">근무 조 자동 표기 (시작일 기준)</div>
+                    <div id="shift-type-display" class="font-black text-blue-600 text-xs sm:text-sm">-</div>
+                    <div id="work-hours-display" class="text-[11px] text-slate-500 mt-0.5 font-semibold">-</div>
+                </div>
+
+                <!-- 팀원 및 리더 근태 사유 선택 (공정번호 삭제, 김진세 추가) -->
                 <div class="space-y-3">
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">팀원 근태 사유 선택 (월초 연차 계획 입력 가능)</label>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">근태 사유 선택 (기간 동안 일괄 적용)</label>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                         
+                        <!-- 김진세 (리더) -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                                <span>김진세 (리더)</span>
+                                <select id="leave-김진세" onchange="onLeaveChange('김진세')" class="p-1.5 border rounded-lg text-xs bg-white">
+                                    <option value="정상근무">정상근무</option>
+                                    <option value="연차">연차</option>
+                                    <option value="휴가">휴가</option>
+                                    <option value="교육">교육</option>
+                                    <option value="병가">병가</option>
+                                    <option value="훈련">훈련</option>
+                                    <option value="반차">반차</option>
+                                    <option value="반반차">반반차</option>
+                                    <option value="육아">육아</option>
+                                    <option value="기타">기타 (직접입력)</option>
+                                </select>
+                            </div>
+                            <input type="text" id="custom-leave-김진세" placeholder="김진세 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
+                        </div>
+
                         <!-- 김장환 -->
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                                <span>김장환 (T-04)</span>
+                                <span>김장환</span>
                                 <select id="leave-김장환" onchange="onLeaveChange('김장환')" class="p-1.5 border rounded-lg text-xs bg-white">
                                     <option value="정상근무">정상근무</option>
                                     <option value="연차">연차</option>
@@ -85,7 +111,7 @@
                         <!-- 권의환 -->
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                                <span>권의환 (T-1)</span>
+                                <span>권의환</span>
                                 <select id="leave-권의환" onchange="onLeaveChange('권의환')" class="p-1.5 border rounded-lg text-xs bg-white">
                                     <option value="정상근무">정상근무</option>
                                     <option value="연차">연차</option>
@@ -105,7 +131,7 @@
                         <!-- 김현진 -->
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                                <span>김현진 (T-04)</span>
+                                <span>김현진</span>
                                 <select id="leave-김현진" onchange="onLeaveChange('김현진')" class="p-1.5 border rounded-lg text-xs bg-white">
                                     <option value="정상근무">정상근무</option>
                                     <option value="연차">연차</option>
@@ -128,7 +154,7 @@
                 <!-- 공정 및 장비 이슈 -->
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">장비 및 공정 이슈 (오토 6 / 메인 8)</label>
-                    <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항...&#10;[T-01] 제네레이터 O2 퍼지...&#10;[T-04S] N2 alarm..."></textarea>
+                    <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항..."></textarea>
                 </div>
 
                 <!-- 행정 완료 체크 -->
@@ -141,7 +167,7 @@
                     </label>
                 </div>
 
-                <button onclick="saveLogToRealtime()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md hover:bg-blue-700 transition">전체 데이터 저장 및 반영</button>
+                <button onclick="saveLogToRealtime()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md hover:bg-blue-700 transition">선택 기간 전체 데이터 저장</button>
             </div>
         </section>
 
@@ -155,16 +181,12 @@
                         <button onclick="changeMonth(1)" class="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold">▶</button>
                     </div>
                 </div>
-                <!-- 달력 Grid -->
                 <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-400 pb-1 border-b">
                     <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
                 </div>
-                <div id="calendar-grid" class="grid grid-cols-7 gap-1">
-                    <!-- 동적 생성 -->
-                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
 
-            <!-- 캘린더 하단 선택한 날짜 상세 내용 탭 (여백 압축 적용) -->
             <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/60 space-y-1.5">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
                     <span class="font-bold text-xs sm:text-sm text-slate-700">📌 선택한 날짜 상세 일지</span>
@@ -176,15 +198,12 @@
             </div>
         </section>
 
-        <!-- [PART 3] 이슈 조회 섹션 (색인 및 검색 기능 추가) -->
+        <!-- [PART 3] 이슈 조회 섹션 -->
         <section id="tab-history" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
-                <div class="flex justify-between items-center">
-                    <h2 class="font-bold text-sm sm:text-base text-slate-800">🔍 장비 및 공정 이슈 조회</h2>
-                </div>
-                <!-- 검색 색인 입력창 -->
+                <h2 class="font-bold text-sm sm:text-base text-slate-800">🔍 장비 및 공정 이슈 조회</h2>
                 <div>
-                    <input type="text" id="history-search" oninput="filterHistory()" placeholder="🔍 키워드 검색 (예: 제네레이터, T-04, 9월 8일 등)..." class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
+                    <input type="text" id="history-search" oninput="filterHistory()" placeholder="🔍 키워드 검색 (예: 제네레이터, T-04 등)..." class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
                 </div>
                 <div id="history-container" class="space-y-3">
                     <div class="p-4 text-center text-xs text-slate-400">데이터를 불러오는 중...</div>
@@ -203,13 +222,13 @@
                     <button onclick="exportExcel()" class="w-full p-3.5 bg-emerald-600 text-white font-bold text-xs sm:text-sm rounded-xl hover:bg-emerald-700 transition flex items-center justify-center gap-2">
                         📊 엑셀(CSV) 파일 다운로드
                     </button>
-                    <button onclick="window.print()" class="w-full p-3.5 bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl hover:bg-slate-900 transition flex items-center justify-center gap-2">
-                        🖨️ A4 프린트 (미리보기만 출력)
+                    <button onclick="window.print()" class="w-full p-3.5 bg-indigo-600 text-white font-bold text-xs sm:text-sm rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2">
+                        🖨️ A4 체크리스트 출력 (전용 페이지)
                     </button>
                 </div>
             </div>
 
-            <!-- 프린트 대상 영역 (실시간 요약 미리보기) -->
+            <!-- 실시간 요약 미리보기 -->
             <div id="print-area" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
                 <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2">📋 실시간 요약 미리보기</h3>
                 <div id="preview-box" class="text-[11px] sm:text-xs text-slate-600 space-y-1 font-mono bg-slate-50 p-3.5 rounded-xl whitespace-pre-wrap leading-relaxed">
@@ -217,6 +236,49 @@
                 </div>
             </div>
         </section>
+
+        <!-- [PART 5] A4 전용 체크리스트 인쇄 레이아웃 -->
+        <div id="a4-checklist-print-area" style="display: none; background: white; padding: 10px; font-family: Arial, sans-serif; color: #111;">
+            <div style="background-color: #1e3a8a; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: flex-end; border-radius: 6px; margin-bottom: 15px;">
+                <div>
+                    <h1 style="margin: 0; font-size: 18pt;">현장 리더 통합 관리 체크리스트</h1>
+                    <div style="font-size: 9pt; opacity: 0.85; margin-top: 3px;">4인 체제 (오토메이션 6대 / 메인 8대)</div>
+                </div>
+                <div id="print-date-display" style="font-size: 10pt; font-weight: bold; background: rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 4px;">출력일자: 2026-09-08</div>
+            </div>
+
+            <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 1. 월간 (Monthly) 점검 체크리스트</h2>
+            <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
+                <div style="margin-bottom: 5px;">☑ <b>월초 연차 및 휴무 계획 사전 취합:</b> 웹앱의 [기간별 연차/근태 저장] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, 대근 불가 리스크 공백 구간 확인</div>
+                <div style="margin-bottom: 5px;">☑ <b>전사 필수 일정 파악:</b> 법정 의무 교육, 건강검진, 사내 행사 일정 사내 캘린더 및 웹앱 일정 동기화</div>
+                <div style="margin-bottom: 5px;">☑ <b>장비 정비 주간 확인:</b> 오토메이션(6대), 메인(8대) 대규모 정비 및 예방 점검(PM) 주간 사전 체크</div>
+                <div>☑ <b>행정 및 실적 마감 점검:</b> 일일 실적마감과 셀 재고 관리 흐름 월말 최종 정착 여부 검수</div>
+            </div>
+
+            <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 2. 주간 (Weekly) 점검 체크리스트</h2>
+            <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
+                <div style="margin-bottom: 5px;">☑ <b>W1 (첫째 주):</b> 이달의 전사 일정 공유 및 팀원들에게 휴무 조율 가이드(최소 유지 인력 기준) 리마인드</div>
+                <div style="margin-bottom: 5px;">☑ <b>W2 (둘째 주):</b> 팀원들이 카톡방 및 웹앱에 올린 휴무·교육 일정 중복 여부 및 대근 불가 공백 최종 확인</div>
+                <div style="margin-bottom: 5px;">☑ <b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통 및 해소</div>
+                <div>☑ <b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 한 주간 발생한 기술/공정 성과 데이터화 정리</div>
+            </div>
+
+            <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 3. 일간 (Daily) 및 주·야간 교대 실무 체크리스트</h2>
+            <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
+                <div style="font-weight: bold; margin-bottom: 3px;">[출근 직후 / 근태 확인]</div>
+                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 웹앱 캘린더 및 카톡방을 통한 당일 휴무 신청자 현황 최종 확인 / 대근 불가 장비 공백 리스크 스캔</div>
+                <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[핵심 장비 및 공정 점검]</div>
+                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 오토메이션(6대) 및 메인(8대) 구동 상태 및 에러 유무 확인 / 공정별 담당 현황 체크</div>
+                <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[행정 마감 및 이슈 기록]</div>
+                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 일일 실적마감 및 셀 재고 관리 흐름 이상 유무 체크 / 장비 에러 및 조치 내역 웹앱 기록</div>
+                <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[퇴근 전 교대 인수인계 및 공유]</div>
+                <div style="margin-left: 15px; color: #334155;">- 카카오톡 전달용 텍스트 복사 후 교대조 공유 / 익일 예정된 휴무자 및 점검 일정 사전 공유</div>
+            </div>
+            
+            <div style="margin-top: 15px; text-align: center; font-size: 8pt; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 6px;">
+                Qcells Tandem Ops — 현장 리더 전용 통합 관리 체크리스트
+            </div>
+        </div>
     </div>
 
     <!-- Firebase Realtime Database SDK 연동 -->
@@ -245,15 +307,16 @@
 
     <script>
         const todayStr = new Date().toISOString().split('T')[0];
-        document.getElementById('log-date').value = todayStr;
+        document.getElementById('log-start-date').value = todayStr;
+        document.getElementById('log-end-date').value = todayStr;
+        document.getElementById('print-date-display').innerText = "출력일자: " + todayStr;
+
         let currentCalDate = new Date();
         let cachedLogs = {};
 
         window.addEventListener('DOMContentLoaded', () => {
             const localData = localStorage.getItem('tandem_rtdb_logs');
-            if(localData) {
-                cachedLogs = JSON.parse(localData);
-            }
+            if(localData) { cachedLogs = JSON.parse(localData); }
             fetchAllLogs();
         });
 
@@ -299,13 +362,14 @@
         }
 
         function updateShiftDisplay() {
-            const dateStr = document.getElementById('log-date').value;
+            const dateStr = document.getElementById('log-start-date').value;
+            if(!dateStr) return;
             const res = calculateAutoShift(dateStr);
             document.getElementById('shift-type-display').innerText = res.shiftType + "조";
             document.getElementById('work-hours-display').innerText = res.workHours;
         }
 
-        document.getElementById('log-date').addEventListener('change', updateShiftDisplay);
+        document.getElementById('log-start-date').addEventListener('change', updateShiftDisplay);
         updateShiftDisplay();
 
         function onLeaveChange(name) {
@@ -315,101 +379,123 @@
             else customInput.classList.add('hidden');
         }
 
-        function getLogData() {
-            const date = document.getElementById('log-date').value;
-            const shift = calculateAutoShift(date);
-
+        function getLeavesData() {
             const getLeaveValue = (name) => {
                 const val = document.getElementById(`leave-${name}`).value;
                 if(val === '기타') return document.getElementById(`custom-leave-${name}`).value || '기타';
                 return val;
             };
 
-            const leaves = {
+            return {
+                "김진세": getLeaveValue("김진세"),
                 "김장환": getLeaveValue("김장환"),
                 "권의환": getLeaveValue("권의환"),
                 "김현진": getLeaveValue("김현진")
             };
+        }
+
+        // 여러 날짜(기간)에 걸쳐 데이터 저장 (하루 이상 지원)
+        async function saveLogToRealtime() {
+            const startDateStr = document.getElementById('log-start-date').value;
+            const endDateStr = document.getElementById('log-end-date').value || startDateStr;
+            
+            if(!startDateStr) { alert('시작일을 선택해주세요.'); return; }
+
+            const start = new Date(startDateStr);
+            const end = new Date(endDateStr);
+
+            if(start > end) {
+                alert('종료일이 시작일보다 빠를 수 없습니다.');
+                return;
+            }
+
+            const leaves = getLeavesData();
             const issues = document.getElementById('issue-text').value;
             const sheet = document.getElementById('check-sheet').checked;
             const stock = document.getElementById('check-stock').checked;
 
-            return { date, shift, leaves, issues, sheet, stock };
-        }
+            let curr = new Date(start);
+            while(curr <= end) {
+                const year = curr.getFullYear();
+                const mm = String(curr.getMonth() + 1).padStart(2, '0');
+                const dd = String(curr.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${mm}-${dd}`;
+                const shift = calculateAutoShift(dateStr);
 
-        async function saveLogToRealtime() {
-            const data = getLogData();
-            let finalData = data;
-            if(cachedLogs[data.date]) {
-                const existing = cachedLogs[data.date];
-                finalData = {
-                    date: data.date,
-                    shift: data.shift,
-                    leaves: { ...existing.leaves, ...data.leaves },
-                    issues: data.issues ? data.issues : (existing.issues || ""),
-                    sheet: data.sheet || existing.sheet,
-                    stock: data.stock || existing.stock
-                };
-            }
-
-            cachedLogs[data.date] = finalData;
-            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
-
-            if(!window.tandemRtdb) {
-                alert('로컬에 저장되었습니다.');
-                switchTab('export');
-                return;
-            }
-
-            try {
-                const { database, ref, set } = window.tandemRtdb;
-                await set(ref(database, 'daily_logs/' + data.date.replace(/-/g, '_')), finalData);
-                alert('Realtime Database 클라우드에 성공적으로 저장되었습니다!');
-                switchTab('export');
-            } catch (e) {
-                console.error("저장 오류:", e);
-                alert('저장 실패 (로컬 백업 완료): ' + e.message);
-                switchTab('export');
-            }
-        }
-
-        async function saveLeaveOnlyToRealtime() {
-            const date = document.getElementById('log-date').value;
-            if(!date) { alert('날짜를 선택해주세요.'); return; }
-            
-            const getLeaveValue = (name) => {
-                const val = document.getElementById(`leave-${name}`).value;
-                if(val === '기타') return document.getElementById(`custom-leave-${name}`).value || '기타';
-                return val;
-            };
-
-            const leaves = {
-                "김장환": getLeaveValue("김장환"),
-                "권의환": getLeaveValue("권의환"),
-                "김현진": getLeaveValue("김현진")
-            };
-            const shift = calculateAutoShift(date);
-
-            let finalData;
-            if(cachedLogs[date]) {
-                finalData = { ...cachedLogs[date], leaves: { ...cachedLogs[date].leaves, ...leaves } };
-            } else {
-                finalData = { date, shift, leaves, issues: "", sheet: false, stock: false };
-            }
-
-            cachedLogs[date] = finalData;
-            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
-
-            if(window.tandemRtdb) {
-                try {
-                    const { database, ref, set } = window.tandemRtdb;
-                    await set(ref(database, 'daily_logs/' + date.replace(/-/g, '_')), finalData);
-                } catch (e) {
-                    console.warn("연차 클라우드 저장 예외:", e);
+                let baseData = { date: dateStr, shift, leaves, issues, sheet, stock };
+                if(cachedLogs[dateStr]) {
+                    const existing = cachedLogs[dateStr];
+                    baseData = {
+                        date: dateStr,
+                        shift: shift,
+                        leaves: { ...existing.leaves, ...leaves },
+                        issues: issues ? issues : (existing.issues || ""),
+                        sheet: sheet || existing.sheet,
+                        stock: stock || existing.stock
+                    };
                 }
+
+                cachedLogs[dateStr] = baseData;
+
+                if(window.tandemRtdb) {
+                    try {
+                        const { database, ref, set } = window.tandemRtdb;
+                        await set(ref(database, 'daily_logs/' + dateStr.replace(/-/g, '_')), baseData);
+                    } catch (e) {
+                        console.error("기간 저장 중 오류:", e);
+                    }
+                }
+
+                curr.setDate(curr.getDate() + 1);
             }
 
-            alert(`[${date}] 연차 및 근태 계획이 저장되었습니다!`);
+            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
+            alert('선택하신 기간 동안 데이터가 성공적으로 반영 및 저장되었습니다!');
+            switchTab('export');
+        }
+
+        async function saveLeavePeriodToRealtime() {
+            const startDateStr = document.getElementById('log-start-date').value;
+            const endDateStr = document.getElementById('log-end-date').value || startDateStr;
+            if(!startDateStr) { alert('시작일을 선택해주세요.'); return; }
+
+            const start = new Date(startDateStr);
+            const end = new Date(endDateStr);
+            if(start > end) { alert('종료일이 시작일보다 빠를 수 없습니다.'); return; }
+
+            const leaves = getLeavesData();
+
+            let curr = new Date(start);
+            while(curr <= end) {
+                const year = curr.getFullYear();
+                const mm = String(curr.getMonth() + 1).padStart(2, '0');
+                const dd = String(curr.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${mm}-${dd}`;
+                const shift = calculateAutoShift(dateStr);
+
+                let finalData;
+                if(cachedLogs[dateStr]) {
+                    finalData = { ...cachedLogs[dateStr], leaves: { ...cachedLogs[dateStr].leaves, ...leaves } };
+                } else {
+                    finalData = { date: dateStr, shift, leaves, issues: "", sheet: false, stock: false };
+                }
+
+                cachedLogs[dateStr] = finalData;
+
+                if(window.tandemRtdb) {
+                    try {
+                        const { database, ref, set } = window.tandemRtdb;
+                        await set(ref(database, 'daily_logs/' + dateStr.replace(/-/g, '_')), finalData);
+                    } catch (e) {
+                        console.warn("기간 연차 저장 예외:", e);
+                    }
+                }
+
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
+            alert(`선택한 기간 동안 연차 및 근태 계획이 저장되었습니다!`);
         }
 
         async function loadHistory() {
@@ -430,7 +516,7 @@
                 const log = logsToRender[date];
                 const shiftName = log.shift ? log.shift.shiftType : '근무';
                 return `
-                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 history-card" data-search="${(log.date || date) + ' ' + shiftName + ' ' + (log.issues || '')}">
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 history-card">
                         <div class="flex justify-between items-center text-xs font-bold text-blue-600 border-b pb-1">
                             <span>📅 ${log.date || date} (${shiftName}조)</span>
                         </div>
@@ -440,7 +526,6 @@
             }).join('');
         }
 
-        // 이슈 색인 검색 기능
         function filterHistory() {
             const keyword = document.getElementById('history-search').value.toLowerCase().trim();
             if(!keyword) {
@@ -483,7 +568,6 @@
                 let leaveTags = '';
                 
                 if(log) {
-                    // 근무 형태 표기 (주간/야간/휴무)
                     const sType = log.shift ? log.shift.shiftType : calculateAutoShift(dateStr).shiftType;
                     let badgeColor = "bg-slate-100 text-slate-600";
                     if(sType === '주간') badgeColor = "bg-blue-100 text-blue-700";
@@ -492,7 +576,6 @@
 
                     shiftBadge = `<span class="${badgeColor} px-1 rounded text-[8px] font-bold inline-block mb-0.5">${sType}</span>`;
 
-                    // 2명 이상 근태 변경인원 다중 태그 처리
                     if(log.leaves) {
                         leaveTags = Object.entries(log.leaves)
                             .filter(([k, v]) => v && v !== '정상근무')
@@ -500,7 +583,6 @@
                             .join('');
                     }
                 } else {
-                    // 기록이 없어도 기본 주간/야간 계산 표기
                     const sType = calculateAutoShift(dateStr).shiftType;
                     let badgeColor = sType === '휴무' ? "bg-rose-50 text-rose-400" : "bg-slate-50 text-slate-400";
                     shiftBadge = `<span class="${badgeColor} px-1 rounded text-[8px] font-semibold inline-block mb-0.5">${sType}</span>`;
@@ -534,8 +616,7 @@
             let sheetText = log.sheet ? '완료' : '미완료';
             let stockText = log.stock ? '완료' : '미완료';
 
-            // 상세 일지 여백(공백) 타이트하게 압축
-            detailBox.innerHTML = `[근무조] ${log.shift ? log.shift.shiftType + '조 (' + log.shift.workHours + ')' : '-'}<br>[근태내역] ${leaveStr}<br>[행정상태] 실적마감(${sheetText}) / 재고관리(${stockText})<br>[장비 이슈] ${log.issues ? log.issues.replace(/\n/g, ' / ') : '특이사항 없음'}`;
+            detailBox.innerHTML = `[근무조] ${log.shift ? log.shift.shiftType + '조 (' + log.shift.workHours + ')' : '-'}<br>[근태내역] ${leaveStr}<br>[행정상태] 실적마감(${sheetTest}) / 재고관리(${stockText})<br>[장비 이슈] ${log.issues ? log.issues.replace(/\n/g, ' / ') : '특이사항 없음'}`;
         }
 
         function changeMonth(diff) {
@@ -544,17 +625,21 @@
         }
 
         function updatePreview() {
-            const data = getLogData();
-            let leaveStr = Object.entries(data.leaves).filter(([k,v]) => v !== '정상근무').map(([k,v]) => `${k}(${v})`).join(', ') || '없음';
-            const sheetText = data.sheet ? '완료' : '미완료';
-            const stockText = data.stock ? '완료' : '미완료';
+            const startDateStr = document.getElementById('log-start-date').value;
+            const endDateStr = document.getElementById('log-end-date').value || startDateStr;
+            const shift = calculateAutoShift(startDateStr);
+            const leaves = getLeavesData();
+            let leaveStr = Object.entries(leaves).filter(([k,v]) => v !== '정상근무').map(([k,v]) => `${k}(${v})`).join(', ') || '없음';
+            const sheetText = document.getElementById('check-sheet').checked ? '완료' : '미완료';
+            const stockText = document.getElementById('check-stock').checked ? '완료' : '미완료';
+            const issues = document.getElementById('issue-text').value;
             
-            const text = `[현장 일일 보고] (${data.date})
-- 근무형태: ${data.shift.shiftType}조 (${data.shift.workHours})
+            const text = `[현장 기간 보고] (${startDateStr} ~ ${endDateStr})
+- 근무형태: ${shift.shiftType}조 (${shift.workHours})
 - 근태사유: ${leaveStr}
 - 행정상태: 실적마감(${sheetText}) / 재고관리(${stockText})
 - 장비 및 공정 이슈:
-${data.issues || '특이사항 없음'}`;
+${issues || '특이사항 없음'}`;
 
             document.getElementById('preview-box').innerText = text;
         }
@@ -564,18 +649,23 @@ ${data.issues || '특이사항 없음'}`;
         }
 
         function exportExcel() {
-            const data = getLogData();
-            let leaveStr = Object.entries(data.leaves).map(([k,v]) => `${k}:${v}`).join('/');
-            const sheetText = data.sheet ? '완료' : '미완료';
-            const stockText = data.stock ? '완료' : '미완료';
-            const csvContent = "\uFEFF" + "날짜,근무조,근태사유,실적마감,재고관리,이슈내용\n" +
-                `"${data.date}","${data.shift.shiftType}조","${leaveStr}","${sheetText}","${stockText}","${data.issues.replace(/\n/g, ' ')}"`;
+            const startDateStr = document.getElementById('log-start-date').value;
+            const endDateStr = document.getElementById('log-end-date').value || startDateStr;
+            const shift = calculateAutoShift(startDateStr);
+            const leaves = getLeavesData();
+            let leaveStr = Object.entries(leaves).map(([k,v]) => `${k}:${v}`).join('/');
+            const sheetText = document.getElementById('check-sheet').checked ? '완료' : '미완료';
+            const stockText = document.getElementById('check-stock').checked ? '완료' : '미완료';
+            const issues = document.getElementById('issue-text').value;
+
+            const csvContent = "\uFEFF" + "기간,근무조,근태사유,실적마감,재고관리,이슈내용\n" +
+                `"${startDateStr} ~ ${endDateStr}","${shift.shiftType}조","${leaveStr}","${sheetText}","${stockText}","${issues.replace(/\n/g, ' ')}"`;
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `현장보고_${data.date}.csv`;
+            a.download = `현장기간보고_${startDateStr}.csv`;
             a.click();
         }
     </script>
