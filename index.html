@@ -45,7 +45,6 @@
                     <button onclick="saveLeavePeriodToRealtime()" class="px-3 py-1.5 bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-amber-600 transition">🗓️ 기간별 연차/근태 저장</button>
                 </div>
                 
-                <!-- 날짜 선택 (기간 설정: 시작일 ~ 종료일) -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">시작일</label>
@@ -63,12 +62,10 @@
                     <div id="work-hours-display" class="text-[11px] text-slate-500 mt-0.5 font-semibold">-</div>
                 </div>
 
-                <!-- 팀원 및 리더 근태 사유 선택 (공정번호 삭제, 김진세 추가) -->
                 <div class="space-y-3">
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">근태 사유 선택 (기간 동안 일괄 적용)</label>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                         
-                        <!-- 김진세 (리더) -->
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>김진세 (리더)</span>
@@ -88,7 +85,6 @@
                             <input type="text" id="custom-leave-김진세" placeholder="김진세 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
 
-                        <!-- 김장환 -->
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>김장환</span>
@@ -108,7 +104,6 @@
                             <input type="text" id="custom-leave-김장환" placeholder="김장환 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
 
-                        <!-- 권의환 -->
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>권의환</span>
@@ -128,7 +123,6 @@
                             <input type="text" id="custom-leave-권의환" placeholder="권의환 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
 
-                        <!-- 김현진 -->
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>김현진</span>
@@ -151,13 +145,11 @@
                     </div>
                 </div>
 
-                <!-- 공정 및 장비 이슈 -->
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">장비 및 공정 이슈 (오토 6 / 메인 8)</label>
                     <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항..."></textarea>
                 </div>
 
-                <!-- 행정 완료 체크 -->
                 <div class="flex gap-6 pt-1">
                     <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
                         <input type="checkbox" id="check-sheet" class="rounded text-blue-600 w-4 h-4"> 일일 실적마감
@@ -187,6 +179,7 @@
                 <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
 
+            <!-- 선택한 날짜 상세 일지 박스 정상 노출 -->
             <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/60 space-y-1.5">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
                     <span class="font-bold text-xs sm:text-sm text-slate-700">📌 선택한 날짜 상세 일지</span>
@@ -237,7 +230,7 @@
             </div>
         </section>
 
-        <!-- [PART 5] A4 전용 체크리스트 인쇄 레이아웃 -->
+        <!-- [PART 5] A4 전용 체크리스트 인쇄 레이아웃 (빈 체크박스 적용) -->
         <div id="a4-checklist-print-area" style="display: none; background: white; padding: 10px; font-family: Arial, sans-serif; color: #111;">
             <div style="background-color: #1e3a8a; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: flex-end; border-radius: 6px; margin-bottom: 15px;">
                 <div>
@@ -249,18 +242,18 @@
 
             <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 1. 월간 (Monthly) 점검 체크리스트</h2>
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
-                <div style="margin-bottom: 5px;">☑ <b>월초 연차 및 휴무 계획 사전 취합:</b> 웹앱의 [기간별 연차/근태 저장] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, 대근 불가 리스크 공백 구간 확인</div>
-                <div style="margin-bottom: 5px;">☑ <b>전사 필수 일정 파악:</b> 법정 의무 교육, 건강검진, 사내 행사 일정 사내 캘린더 및 웹앱 일정 동기화</div>
-                <div style="margin-bottom: 5px;">☑ <b>장비 정비 주간 확인:</b> 오토메이션(6대), 메인(8대) 대규모 정비 및 예방 점검(PM) 주간 사전 체크</div>
-                <div>☑ <b>행정 및 실적 마감 점검:</b> 일일 실적마감과 셀 재고 관리 흐름 월말 최종 정착 여부 검수</div>
+                <div style="margin-bottom: 5px;">☐ <b>월초 연차 및 휴무 계획 사전 취합:</b> 웹앱의 [기간별 연차/근태 저장] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, 대근 불가 리스크 공백 구간 확인</div>
+                <div style="margin-bottom: 5px;">☐ <b>전사 필수 일정 파악:</b> 법정 의무 교육, 건강검진, 사내 행사 일정 사내 캘린더 및 웹앱 일정 동기화</div>
+                <div style="margin-bottom: 5px;">☐ <b>장비 정비 주간 확인:</b> 오토메이션(6대), 메인(8대) 대규모 정비 및 예방 점검(PM) 주간 사전 체크</div>
+                <div>☐ <b>행정 및 실적 마감 점검:</b> 일일 실적마감과 셀 재고 관리 흐름 월말 최종 정착 여부 검수</div>
             </div>
 
             <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 2. 주간 (Weekly) 점검 체크리스트</h2>
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
-                <div style="margin-bottom: 5px;">☑ <b>W1 (첫째 주):</b> 이달의 전사 일정 공유 및 팀원들에게 휴무 조율 가이드(최소 유지 인력 기준) 리마인드</div>
-                <div style="margin-bottom: 5px;">☑ <b>W2 (둘째 주):</b> 팀원들이 카톡방 및 웹앱에 올린 휴무·교육 일정 중복 여부 및 대근 불가 공백 최종 확인</div>
-                <div style="margin-bottom: 5px;">☑ <b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통 및 해소</div>
-                <div>☑ <b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 한 주간 발생한 기술/공정 성과 데이터화 정리</div>
+                <div style="margin-bottom: 5px;">☐ <b>W1 (첫째 주):</b> 이달의 전사 일정 공유 및 팀원들에게 휴무 조율 가이드(최소 유지 인력 기준) 리마인드</div>
+                <div style="margin-bottom: 5px;">☐ <b>W2 (둘째 주):</b> 팀원들이 카톡방 및 웹앱에 올린 휴무·교육 일정 중복 여부 및 대근 불가 공백 최종 확인</div>
+                <div style="margin-bottom: 5px;">☐ <b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통 및 해소</div>
+                <div>☐ <b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 한 주간 발생한 기술/공정 성과 데이터화 정리</div>
             </div>
 
             <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 3. 일간 (Daily) 및 주·야간 교대 실무 체크리스트</h2>
@@ -394,7 +387,6 @@
             };
         }
 
-        // 여러 날짜(기간)에 걸쳐 데이터 저장 (하루 이상 지원)
         async function saveLogToRealtime() {
             const startDateStr = document.getElementById('log-start-date').value;
             const endDateStr = document.getElementById('log-end-date').value || startDateStr;
@@ -616,7 +608,7 @@
             let sheetText = log.sheet ? '완료' : '미완료';
             let stockText = log.stock ? '완료' : '미완료';
 
-            detailBox.innerHTML = `[근무조] ${log.shift ? log.shift.shiftType + '조 (' + log.shift.workHours + ')' : '-'}<br>[근태내역] ${leaveStr}<br>[행정상태] 실적마감(${sheetTest}) / 재고관리(${stockText})<br>[장비 이슈] ${log.issues ? log.issues.replace(/\n/g, ' / ') : '특이사항 없음'}`;
+            detailBox.innerHTML = `[근무조] ${log.shift ? log.shift.shiftType + '조 (' + log.shift.workHours + ')' : '-'}<br>[근태내역] ${leaveStr}<br>[행정상태] 실적마감(${sheetText}) / 재고관리(${stockText})<br>[장비 이슈] ${log.issues ? log.issues.replace(/\n/g, ' / ') : '특이사항 없음'}`;
         }
 
         function changeMonth(diff) {
