@@ -125,10 +125,10 @@
                     </div>
                 </div>
 
-                <!-- 공정 및 장비 이슈 -->
+                <!-- 공정 및 장비 이슈 (입력창 크기 확대: rows="8") -->
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">장비 및 공정 이슈 (오토 6 / 메인 8)</label>
-                    <textarea id="issue-text" rows="4" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항...&#10;[T-01] 제네레이터 O2 퍼지...&#10;[T-04S] N2 alarm..."></textarea>
+                    <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항...&#10;[T-01] 제네레이터 O2 퍼지...&#10;[T-04S] N2 alarm..."></textarea>
                 </div>
 
                 <!-- 행정 완료 체크 -->
@@ -161,6 +161,17 @@
                 </div>
                 <div id="calendar-grid" class="grid grid-cols-7 gap-1">
                     <!-- 동적 생성 -->
+                </div>
+            </div>
+
+            <!-- 캘린더 하단 선택한 날짜 상세 내용 탭 -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
+                <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2 flex justify-between items-center">
+                    <span>📌 선택한 날짜 상세 일지</span>
+                    <span id="selected-date-title" class="text-xs text-blue-600 font-medium">날짜를 선택해주세요</span>
+                </h3>
+                <div id="selected-day-detail" class="text-xs text-slate-600 space-y-1.5 bg-slate-50 p-3 rounded-xl min-h-[80px] whitespace-pre-wrap leading-relaxed">
+                    달력에서 날짜를 터치하면 해당 일의 상세 내용과 장비 이슈가 여기에 표시됩니다.
                 </div>
             </div>
         </section>
@@ -320,11 +331,8 @@
             return { date, shift, leaves, issues, sheet, stock };
         }
 
-        // 전체 데이터 저장 (RTDB)
         async function saveLogToRealtime() {
             const data = getLogData();
-            
-            // 기존 캐시와 병합
             let finalData = data;
             if(cachedLogs[data.date]) {
                 const existing = cachedLogs[data.date];
@@ -359,7 +367,6 @@
             }
         }
 
-        // 연차/근태만 미리 저장하기 (RTDB)
         async function saveLeaveOnlyToRealtime() {
             const date = document.getElementById('log-date').value;
             if(!date) { alert('날짜를 선택해주세요.'); return; }
@@ -433,39 +440,54 @@
 
             let gridHtml = '';
             for(let i=0; i<firstDay; i++) {
-                gridHtml += `<div class="min-h-[90px]"></div>`;
+                gridHtml += `<div class="h-16"></div>`;
             }
 
             for(let d=1; d<=lastDate; d++) {
                 const mm = String(month + 1).padStart(2, '0');
                 const dd = String(d).padStart(2, '0');
                 const dateStr = `${year}-${mm}-${dd}`;
-                
-                // 날짜 키 매칭 (하이픈 또는 언더바 모두 대응)
                 const log = cachedLogs[dateStr] || cachedLogs[dateStr.replace(/-/g, '_')];
 
-                let contentHtml = '';
-                if(log) {
-                    let leaveTags = '';
-                    if(log.leaves) {
-                        leaveTags = Object.entries(log.leaves)
-                            .filter(([k, v]) => v && v !== '정상근무')
-                            .map(([k, v]) => `<span class="bg-blue-100 text-blue-700 px-1 rounded text-[9px] font-bold block truncate">${k.slice(0,2)}:${v}</span>`)
-                            .join('');
-                    }
-                    let issuePreview = log.issues ? `<span class="text-[9px] text-slate-500 block truncate mt-0.5">⚠️ 이슈있음</span>` : '';
-                    contentHtml = `<div class="mt-1 space-y-0.5 overflow-hidden text-left">${leaveTags}${issuePreview}</div>`;
+                let leaveTags = '';
+                if(log && log.leaves) {
+                    leaveTags = Object.entries(log.leaves)
+                        .filter(([k, v]) => v && v !== '정상근무')
+                        .map(([k, v]) => `<span class="bg-blue-100 text-blue-700 px-1 rounded text-[8px] font-bold block truncate">${k.slice(0,2)}:${v}</span>`)
+                        .join('');
                 }
 
                 gridHtml += `
-                    <div onclick="alert('${dateStr}\\n${log ? JSON.stringify(log.leaves) : '기록 없음'}')" 
-                         class="p-1.5 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-start min-h-[90px] overflow-hidden ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
-                        <span class="text-xs font-bold text-slate-700 text-left">${d}</span>
-                        ${contentHtml}
+                    <div onclick="showDayDetail('${dateStr}')" 
+                         class="p-1 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-start h-16 text-left overflow-hidden ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
+                        <span class="text-xs font-bold text-slate-700">${d}</span>
+                        <div class="mt-0.5 space-y-0.5">${leaveTags}</div>
                     </div>
                 `;
             }
             document.getElementById('calendar-grid').innerHTML = gridHtml;
+        }
+
+        function showDayDetail(dateStr) {
+            const log = cachedLogs[dateStr] || cachedLogs[dateStr.replace(/-/g, '_')];
+            document.getElementById('selected-date-title').innerText = dateStr;
+            const detailBox = document.getElementById('selected-day-detail');
+
+            if(!log) {
+                detailBox.innerHTML = '<span class="text-slate-400">작성된 일지가 없는 날짜입니다.</span>';
+                return;
+            }
+
+            let leaveStr = Object.entries(log.leaves || {}).map(([k,v]) => `${k}: ${v}`).join(' | ');
+            let sheetText = log.sheet ? '완료' : '미완료';
+            let stockText = log.stock ? '완료' : '미완료';
+
+            detailBox.innerHTML = `
+                <div><b>[근무조]</b> ${log.shift ? log.shift.shiftType + ' (' + log.shift.workHours + ')' : '-'}</div>
+                <div><b>[근태내역]</b> ${leaveStr || '전원 정상근무'}</div>
+                <div><b>[행정상태]</b> 실적마감(${sheetText}) / 재고관리(${stockText})</div>
+                <div class="mt-1 pt-1 border-t border-slate-200"><b>[장비 및 공정 이슈]</b><br>${log.issues ? log.issues.replace(/\n/g, '<br>') : '특이사항 없음'}</div>
+            `;
         }
 
         function changeMonth(diff) {
