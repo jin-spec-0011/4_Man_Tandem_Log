@@ -8,7 +8,11 @@
     <style>
         @media print {
             body { background: white; color: black; }
-            .no-print { display: none !important; }
+            /* 프린트 시 숨길 요소 */
+            .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, .print-hide { display: none !important; }
+            /* 미리보기 박스만 풀스크린으로 출력 최적화 */
+            #print-area { display: block !important; border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            #preview-box { background: white !important; border: 1px solid #cbd5e1 !important; font-size: 14px !important; }
         }
         input[type="date"] { -webkit-appearance: none; appearance: none; background-color: #fff; }
     </style>
@@ -27,7 +31,7 @@
             </div>
         </header>
 
-        <!-- 탭 메뉴 (입력 / 캘린더 / 조회 / 공유) -->
+        <!-- 탭 메뉴 -->
         <div class="grid grid-cols-4 gap-1.5 mb-4 no-print text-center">
             <button onclick="switchTab('daily')" id="btn-daily" class="py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-sm transition">입력</button>
             <button onclick="switchTab('calendar')" id="btn-calendar" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">캘린더</button>
@@ -38,7 +42,7 @@
         <!-- [PART 1] 일일 입력 섹션 -->
         <section id="tab-daily" class="space-y-4 no-print">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-4">
-                <h2 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">📅 날짜 및 자동 교대 확인</h2>
+                <h2 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">📅 날짜 및 교대 확인</h2>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -46,19 +50,24 @@
                         <input type="date" id="log-date" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
-                        <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">자동 계산된 근무 형태</div>
-                        <div class="flex items-center gap-2 mt-0.5">
-                            <span id="shift-type-display" class="font-black text-blue-600 text-xs sm:text-sm">-</span>
-                            <span class="text-slate-300">|</span>
-                            <span id="work-hours-display" class="text-[11px] sm:text-xs font-semibold text-slate-600">-</span>
+                        <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">근무 형태 설정</div>
+                        <div class="flex gap-2 items-center">
+                            <select id="shift-type-select" onchange="onShiftTypeChange()" class="p-1.5 border rounded-lg text-xs bg-white font-bold text-blue-600">
+                                <option value="auto">자동 계산</option>
+                                <option value="주간조">주간조</option>
+                                <option value="야간조">야간조</option>
+                                <option value="휴무">휴무</option>
+                                <option value="기타">기타 (직접입력)</option>
+                            </select>
+                            <input type="text" id="custom-shift-input" placeholder="근무형태 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
+                        <div id="shift-info-display" class="text-[11px] text-slate-500 mt-1 font-semibold">-</div>
                     </div>
                 </div>
 
                 <!-- 팀원 근태 및 사유 선택 -->
                 <div class="space-y-3">
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">팀원 근태 및 사유 입력</label>
-                    
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                         <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                             <span>김장환 (T-04)</span>
@@ -114,7 +123,7 @@
                 <!-- 행정 완료 체크 -->
                 <div class="flex gap-6 pt-1">
                     <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                        <input type="checkbox" id="check-sheet" class="rounded text-blue-600 w-4 h-4"> 일별 시트 정리
+                        <input type="checkbox" id="check-sheet" class="rounded text-blue-600 w-4 h-4"> 일일 실적마감
                     </label>
                     <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
                         <input type="checkbox" id="check-stock" class="rounded text-blue-600 w-4 h-4"> 셀 재고 관리
@@ -128,10 +137,19 @@
         <!-- [PART 2] 캘린더 뷰 섹션 -->
         <section id="tab-calendar" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
-                <h2 class="font-bold text-sm sm:text-base text-slate-800">📅 월별 근태 캘린더 확인</h2>
-                <p class="text-xs text-slate-500">저장된 데이터의 팀원 근태(연차/휴가/교육 등)를 날짜별로 확인할 수 있습니다.</p>
-                <div id="calendar-container" class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-center text-slate-500 py-10">
-                    저장된 데이터를 불러오는 중... (LocalStorage 연동)
+                <div class="flex justify-between items-center">
+                    <h2 id="cal-month-title" class="font-bold text-sm sm:text-base text-slate-800">2026년 9월</h2>
+                    <div class="flex gap-1">
+                        <button onclick="changeMonth(-1)" class="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold">◀</button>
+                        <button onclick="changeMonth(1)" class="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold">▶</button>
+                    </div>
+                </div>
+                <!-- 달력 Grid -->
+                <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-400 pb-1 border-b">
+                    <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center">
+                    <!-- 동적 생성 -->
                 </div>
             </div>
         </section>
@@ -140,16 +158,13 @@
         <section id="tab-history" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
                 <h2 class="font-bold text-sm sm:text-base text-slate-800">🔍 장비 및 공정 이슈 조회</h2>
-                <p class="text-xs text-slate-500">날짜별로 기록된 장비 에러 및 공정 특이사항 히스토리입니다.</p>
-                <div id="history-container" class="space-y-3">
-                    <!-- 데이터 리스트 동적 삽입 -->
-                </div>
+                <div id="history-container" class="space-y-3"></div>
             </div>
         </section>
 
         <!-- [PART 4] 공유 및 출력 섹션 -->
         <section id="tab-export" class="hidden space-y-4">
-            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3 no-print">
                 <h2 class="font-bold text-sm sm:text-base text-slate-800">📤 외부 공유 및 리포트 추출</h2>
                 <div class="space-y-2.5">
                     <button onclick="copyKakaoText()" class="w-full p-3.5 bg-amber-400 text-slate-900 font-bold text-xs sm:text-sm rounded-xl hover:bg-amber-500 transition flex items-center justify-center gap-2">
@@ -159,13 +174,15 @@
                         📊 엑셀(CSV) 파일 다운로드
                     </button>
                     <button onclick="window.print()" class="w-full p-3.5 bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl hover:bg-slate-900 transition flex items-center justify-center gap-2">
-                        🖨️ A4 프린트 / PDF 저장
+                        🖨️ A4 프린트 (미리보기만 출력)
                     </button>
                 </div>
             </div>
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
+
+            <!-- 프린트 대상 영역 (실시간 요약 미리보기) -->
+            <div id="print-area" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
                 <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2">📋 실시간 요약 미리보기</h3>
-                <div id="preview-box" class="text-[11px] sm:text-xs text-slate-600 space-y-1 font-mono bg-slate-50 p-3.5 rounded-xl whitespace-pre-wrap">
+                <div id="preview-box" class="text-[11px] sm:text-xs text-slate-600 space-y-1 font-mono bg-slate-50 p-3.5 rounded-xl whitespace-pre-wrap leading-relaxed">
                     데이터를 입력해주세요.
                 </div>
             </div>
@@ -175,6 +192,7 @@
     <script>
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('log-date').value = todayStr;
+        let currentCalDate = new Date();
 
         function switchTab(tabName) {
             ['daily', 'calendar', 'history', 'export'].forEach(t => {
@@ -186,10 +204,10 @@
 
             if(tabName === 'export') updatePreview();
             if(tabName === 'history') loadHistory();
-            if(tabName === 'calendar') loadCalendar();
+            if(tabName === 'calendar') renderCalendar();
         }
 
-        function calculateShift(selectedDateStr) {
+        function calculateAutoShift(selectedDateStr) {
             const anchorDate = new Date('2026-09-07');
             const currentDate = new Date(selectedDateStr);
             const diffTime = currentDate.getTime() - anchorDate.getTime();
@@ -202,19 +220,43 @@
             return { shiftType: "주간조", workHours: dayOfWeek === 5 ? "08:00 ~ 17:00 (단축)" : "08:00 ~ 20:00" };
         }
 
-        document.getElementById('log-date').addEventListener('change', function(e) {
-            const res = calculateShift(e.target.value);
-            document.getElementById('shift-type-display').innerText = res.shiftType;
-            document.getElementById('work-hours-display').innerText = res.workHours;
-        });
+        function onShiftTypeChange() {
+            const val = document.getElementById('shift-type-select').value;
+            const customInput = document.getElementById('custom-shift-input');
+            if(val === '기타') {
+                customInput.classList.remove('hidden');
+            } else {
+                customInput.classList.add('hidden');
+            }
+            updateShiftDisplay();
+        }
 
-        const initialRes = calculateShift(todayStr);
-        document.getElementById('shift-type-display').innerText = initialRes.shiftType;
-        document.getElementById('work-hours-display').innerText = initialRes.workHours;
+        function updateShiftDisplay() {
+            const type = document.getElementById('shift-type-select').value;
+            const dateStr = document.getElementById('log-date').value;
+            let res;
+            if(type === 'auto') {
+                res = calculateAutoShift(dateStr);
+            } else if(type === '기타') {
+                res = { shiftType: document.getElementById('custom-shift-input').value || '기타', workHours: '직접입력' };
+            } else {
+                res = { shiftType: type, workHours: type === '휴무' ? '휴무' : '설정 시간' };
+            }
+            document.getElementById('shift-info-display').innerText = `${res.shiftType} | ${res.workHours}`;
+        }
+
+        document.getElementById('log-date').addEventListener('change', updateShiftDisplay);
+        document.getElementById('custom-shift-input').addEventListener('input', updateShiftDisplay);
+        updateShiftDisplay();
 
         function getLogData() {
             const date = document.getElementById('log-date').value;
-            const shift = calculateShift(date);
+            const type = document.getElementById('shift-type-select').value;
+            let shift;
+            if(type === 'auto') shift = calculateAutoShift(date);
+            else if(type === '기타') shift = { shiftType: document.getElementById('custom-shift-input').value || '기타', workHours: '직접입력' };
+            else shift = { shiftType: type, workHours: '-' };
+
             const leaves = {
                 "김장환": document.getElementById('leave-김장환').value,
                 "권의환": document.getElementById('leave-권의환').value,
@@ -227,15 +269,55 @@
             return { date, shift, leaves, issues, sheet, stock };
         }
 
-        // 로컬 스토리지 기반 데이터 저장 (Firebase 연동 전 테스트용)
         function saveLog() {
             const data = getLogData();
             let allLogs = JSON.parse(localStorage.getItem('tandem_logs') || '{}');
             allLogs[data.date] = data;
             localStorage.setItem('tandem_logs', JSON.stringify(allLogs));
-            
-            alert('데이터가 안전하게 저장 및 반영되었습니다!');
+            alert('저장되었습니다!');
             switchTab('export');
+        }
+
+        function renderCalendar() {
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+            document.getElementById('cal-month-title').innerText = `${year}년 ${month + 1}월`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            let allLogs = JSON.parse(localStorage.getItem('tandem_logs') || '{}');
+
+            let gridHtml = '';
+            for(let i=0; i<firstDay; i++) {
+                gridHtml += `<div></div>`;
+            }
+
+            for(let d=1; d<=lastDate; d++) {
+                const mm = String(month + 1).padStart(2, '0');
+                const dd = String(d).padStart(2, '0');
+                const dateStr = `${year}-${mm}-${dd}`;
+                const log = allLogs[dateStr];
+
+                let badge = '';
+                if(log) {
+                    let hasLeave = Object.values(log.leaves).some(v => v !== '정상근무');
+                    badge = `<div class="w-1.5 h-1.5 bg-blue-600 rounded-full mx-auto mt-1"></div>`;
+                }
+
+                gridHtml += `
+                    <div onclick="alert('${dateStr} 일지 확인\\n${log ? log.issues.substring(0,30) + '...' : '작성된 일지 없음'}')" 
+                         class="p-2 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-between h-14 ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
+                        <span class="text-xs font-bold text-slate-700">${d}</span>
+                        ${badge}
+                    </div>
+                `;
+            }
+            document.getElementById('calendar-grid').innerHTML = gridHtml;
+        }
+
+        function changeMonth(diff) {
+            currentCalDate.setMonth(currentCalDate.getMonth() + diff);
+            renderCalendar();
         }
 
         function loadHistory() {
@@ -244,49 +326,21 @@
             const dates = Object.keys(allLogs).sort().reverse();
 
             if(dates.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">저장된 이슈 기록이 없습니다.</div>';
+                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">저장된 기록이 없습니다.</div>';
                 return;
             }
 
             container.innerHTML = dates.map(date => {
                 const log = allLogs[date];
-                let leaveSummary = Object.entries(log.leaves).filter(([k,v]) => v !== '정상근무').map(([k,v]) => `${k}:${v}`).join(', ') || '특이사항 없음';
                 return `
                     <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
                         <div class="flex justify-between items-center text-xs font-bold text-blue-600 border-b pb-1">
                             <span>📅 ${date} (${log.shift.shiftType})</span>
-                            <span class="text-[10px] text-slate-500">근태: ${leaveSummary}</span>
                         </div>
                         <p class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">${log.issues || '이슈 내용 없음'}</p>
                     </div>
                 `;
             }).join('');
-        }
-
-        function loadCalendar() {
-            const container = document.getElementById('calendar-container');
-            let allLogs = JSON.parse(localStorage.getItem('tandem_logs') || '{}');
-            const dates = Object.keys(allLogs).sort();
-
-            if(dates.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400">등록된 근태 및 일정 데이터가 없습니다.</div>';
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="space-y-2 text-left">
-                    ${dates.map(date => {
-                        const log = allLogs[date];
-                        let leaves = Object.entries(log.leaves).filter(([k,v]) => v !== '정상근무').map(([k,v]) => `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">${k}(${v})</span>`).join(' ') || '<span class="text-slate-400 text-[10px]">전원 정상근무</span>';
-                        return `
-                            <div class="p-2.5 bg-white border border-slate-200 rounded-xl flex justify-between items-center">
-                                <span class="font-bold text-xs text-slate-700">${date}</span>
-                                <div class="flex gap-1 flex-wrap justify-end">${leaves}</div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
         }
 
         function updatePreview() {
@@ -296,7 +350,7 @@
             const text = `[현장 일일 보고] (${data.date})
 - 근무형태: ${data.shift.shiftType} (${data.shift.workHours})
 - 근태 사유: ${leaveStr}
-- 행정 상태: 시트정리(${data.sheet}) / 재고관리(${data.stock})
+- 행정 상태: 실적마감(${data.sheet}) / 재고관리(${data.stock})
 - 장비 및 공정 이슈:
 ${data.issues || '특이사항 없음'}`;
 
@@ -310,7 +364,7 @@ ${data.issues || '특이사항 없음'}`;
         function exportExcel() {
             const data = getLogData();
             let leaveStr = Object.entries(data.leaves).map(([k,v]) => `${k}:${v}`).join('/');
-            const csvContent = "\uFEFF" + "날짜,근무조,근태내역,시트정리,재고관리,이슈내용\n" +
+            const csvContent = "\uFEFF" + "날짜,근무조,근태내역,실적마감,재고관리,이슈내용\n" +
                 `"${data.date}","${data.shift.shiftType}","${leaveStr}","${data.sheet}","${data.stock}","${data.issues.replace(/\n/g, ' ')}"`;
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
