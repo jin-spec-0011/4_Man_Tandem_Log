@@ -8,9 +8,7 @@
     <style>
         @media print {
             body { background: white; color: black; }
-            /* 프린트 시 숨길 요소 */
             .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, .print-hide { display: none !important; }
-            /* 미리보기 박스만 풀스크린으로 출력 최적화 */
             #print-area { display: block !important; border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
             #preview-box { background: white !important; border: 1px solid #cbd5e1 !important; font-size: 14px !important; }
         }
@@ -27,7 +25,7 @@
                 <p class="text-xs text-slate-500 mt-0.5">리더: 김진세 | 4인 체제 (오토 6 / 메인 4)</p>
             </div>
             <div class="text-center bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap">
-                Online
+                Firebase Online
             </div>
         </header>
 
@@ -130,7 +128,7 @@
                     </label>
                 </div>
 
-                <button onclick="saveLog()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md hover:bg-blue-700 transition">데이터 저장 및 반영</button>
+                <button onclick="saveLogToFirebase()" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md hover:bg-blue-700 transition">데이터 저장 및 반영</button>
             </div>
         </section>
 
@@ -158,7 +156,9 @@
         <section id="tab-history" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
                 <h2 class="font-bold text-sm sm:text-base text-slate-800">🔍 장비 및 공정 이슈 조회</h2>
-                <div id="history-container" class="space-y-3"></div>
+                <div id="history-container" class="space-y-3">
+                    <div class="p-4 text-center text-xs text-slate-400">데이터를 불러오는 중...</div>
+                </div>
             </div>
         </section>
 
@@ -189,10 +189,51 @@
         </section>
     </div>
 
+    <!-- Firebase SDK 및 로직 연동 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA2LBZMHgslX41qmbjZ0jKh1KJT-iKz5bY",
+            authDomain: "qcells-tandem-ops.firebaseapp.com",
+            projectId: "qcells-tandem-ops",
+            storageBucket: "qcells-tandem-ops.firebasestorage.app",
+            messagingSenderId: "909705800417",
+            appId: "1:909705800417:web:1d20fff5bb8a566ce0e5a0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 전역에서 접근할 수 있도록 window에 등록
+        window.tandemDb = { db, collection, doc, setDoc, getDocs };
+    </script>
+
     <script>
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('log-date').value = todayStr;
         let currentCalDate = new Date();
+        let cachedLogs = {}; // 파이어베이스 데이터 캐시
+
+        // 앱 실행 시 데이터 미리 로드
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchAllLogs();
+        });
+
+        async function fetchAllLogs() {
+            if(!window.tandemDb) return;
+            try {
+                const { db, collection, getDocs } = window.tandemDb;
+                const querySnapshot = await getDocs(collection(db, "daily_logs"));
+                cachedLogs = {};
+                querySnapshot.forEach((doc) => {
+                    cachedLogs[doc.id] = doc.data();
+                });
+            } catch (e) {
+                console.error("데이터 로드 실패:", e);
+            }
+        }
 
         function switchTab(tabName) {
             ['daily', 'calendar', 'history', 'export'].forEach(t => {
@@ -223,11 +264,8 @@
         function onShiftTypeChange() {
             const val = document.getElementById('shift-type-select').value;
             const customInput = document.getElementById('custom-shift-input');
-            if(val === '기타') {
-                customInput.classList.remove('hidden');
-            } else {
-                customInput.classList.add('hidden');
-            }
+            if(val === '기타') customInput.classList.remove('hidden');
+            else customInput.classList.add('hidden');
             updateShiftDisplay();
         }
 
@@ -235,13 +273,9 @@
             const type = document.getElementById('shift-type-select').value;
             const dateStr = document.getElementById('log-date').value;
             let res;
-            if(type === 'auto') {
-                res = calculateAutoShift(dateStr);
-            } else if(type === '기타') {
-                res = { shiftType: document.getElementById('custom-shift-input').value || '기타', workHours: '직접입력' };
-            } else {
-                res = { shiftType: type, workHours: type === '휴무' ? '휴무' : '설정 시간' };
-            }
+            if(type === 'auto') res = calculateAutoShift(dateStr);
+            else if(type === '기타') res = { shiftType: document.getElementById('custom-shift-input').value || '기타', workHours: '직접입력' };
+            else res = { shiftType: type, workHours: type === '휴무' ? '휴무' : '설정 시간' };
             document.getElementById('shift-info-display').innerText = `${res.shiftType} | ${res.workHours}`;
         }
 
@@ -269,23 +303,56 @@
             return { date, shift, leaves, issues, sheet, stock };
         }
 
-        function saveLog() {
+        // Firebase에 데이터 저장
+        async function saveLogToFirebase() {
             const data = getLogData();
-            let allLogs = JSON.parse(localStorage.getItem('tandem_logs') || '{}');
-            allLogs[data.date] = data;
-            localStorage.setItem('tandem_logs', JSON.stringify(allLogs));
-            alert('저장되었습니다!');
-            switchTab('export');
+            if(!window.tandemDb) {
+                alert('Firebase 연결 중입니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+            try {
+                const { db, doc, setDoc } = window.tandemDb;
+                await setDoc(doc(db, "daily_logs", data.date), data);
+                cachedLogs[data.date] = data; // 캐시 업데이트
+                alert('Firebase 클라우드에 성공적으로 저장되었습니다!');
+                switchTab('export');
+            } catch (e) {
+                console.error("저장 오류:", e);
+                alert('저장 중 오류가 발생했습니다.');
+            }
         }
 
-        function renderCalendar() {
+        async function loadHistory() {
+            await fetchAllLogs();
+            const container = document.getElementById('history-container');
+            const dates = Object.keys(cachedLogs).sort().reverse();
+
+            if(dates.length === 0) {
+                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">저장된 기록이 없습니다.</div>';
+                return;
+            }
+
+            container.innerHTML = dates.map(date => {
+                const log = cachedLogs[date];
+                return `
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                        <div class="flex justify-between items-center text-xs font-bold text-blue-600 border-b pb-1">
+                            <span>📅 ${date} (${log.shift.shiftType})</span>
+                        </div>
+                        <p class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">${log.issues || '이슈 내용 없음'}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function renderCalendar() {
+            await fetchAllLogs();
             const year = currentCalDate.getFullYear();
             const month = currentCalDate.getMonth();
             document.getElementById('cal-month-title').innerText = `${year}년 ${month + 1}월`;
 
             const firstDay = new Date(year, month, 1).getDay();
             const lastDate = new Date(year, month + 1, 0).getDate();
-            let allLogs = JSON.parse(localStorage.getItem('tandem_logs') || '{}');
 
             let gridHtml = '';
             for(let i=0; i<firstDay; i++) {
@@ -296,16 +363,15 @@
                 const mm = String(month + 1).padStart(2, '0');
                 const dd = String(d).padStart(2, '0');
                 const dateStr = `${year}-${mm}-${dd}`;
-                const log = allLogs[dateStr];
+                const log = cachedLogs[dateStr];
 
                 let badge = '';
                 if(log) {
-                    let hasLeave = Object.values(log.leaves).some(v => v !== '정상근무');
                     badge = `<div class="w-1.5 h-1.5 bg-blue-600 rounded-full mx-auto mt-1"></div>`;
                 }
 
                 gridHtml += `
-                    <div onclick="alert('${dateStr} 일지 확인\\n${log ? log.issues.substring(0,30) + '...' : '작성된 일지 없음'}')" 
+                    <div onclick="alert('${dateStr} 일지 확인\\n${log ? (log.issues ? log.issues.substring(0,30) + '...' : '이슈 없음') : '작성된 일지 없음'}')" 
                          class="p-2 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-between h-14 ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
                         <span class="text-xs font-bold text-slate-700">${d}</span>
                         ${badge}
@@ -318,29 +384,6 @@
         function changeMonth(diff) {
             currentCalDate.setMonth(currentCalDate.getMonth() + diff);
             renderCalendar();
-        }
-
-        function loadHistory() {
-            const container = document.getElementById('history-container');
-            let allLogs = JSON.parse(localStorage.getItem('tandem_logs') || '{}');
-            const dates = Object.keys(allLogs).sort().reverse();
-
-            if(dates.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">저장된 기록이 없습니다.</div>';
-                return;
-            }
-
-            container.innerHTML = dates.map(date => {
-                const log = allLogs[date];
-                return `
-                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-                        <div class="flex justify-between items-center text-xs font-bold text-blue-600 border-b pb-1">
-                            <span>📅 ${date} (${log.shift.shiftType})</span>
-                        </div>
-                        <p class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">${log.issues || '이슈 내용 없음'}</p>
-                    </div>
-                `;
-            }).join('');
         }
 
         function updatePreview() {
