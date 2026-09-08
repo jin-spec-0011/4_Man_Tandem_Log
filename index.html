@@ -125,7 +125,7 @@
                     </div>
                 </div>
 
-                <!-- 공정 및 장비 이슈 (입력창 크기 확대: rows="8") -->
+                <!-- 공정 및 장비 이슈 -->
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">장비 및 공정 이슈 (오토 6 / 메인 8)</label>
                     <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항...&#10;[T-01] 제네레이터 O2 퍼지...&#10;[T-04S] N2 alarm..."></textarea>
@@ -164,22 +164,28 @@
                 </div>
             </div>
 
-            <!-- 캘린더 하단 선택한 날짜 상세 내용 탭 -->
-            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
-                <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2 flex justify-between items-center">
-                    <span>📌 선택한 날짜 상세 일지</span>
-                    <span id="selected-date-title" class="text-xs text-blue-600 font-medium">날짜를 선택해주세요</span>
-                </h3>
-                <div id="selected-day-detail" class="text-xs text-slate-600 space-y-1.5 bg-slate-50 p-3 rounded-xl min-h-[80px] whitespace-pre-wrap leading-relaxed">
+            <!-- 캘린더 하단 선택한 날짜 상세 내용 탭 (여백 압축 적용) -->
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/60 space-y-1.5">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
+                    <span class="font-bold text-xs sm:text-sm text-slate-700">📌 선택한 날짜 상세 일지</span>
+                    <span id="selected-date-title" class="text-xs text-blue-600 font-bold">날짜를 선택해주세요</span>
+                </div>
+                <div id="selected-day-detail" class="text-[11px] sm:text-xs text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-xl min-h-[60px] whitespace-pre-wrap leading-tight">
                     달력에서 날짜를 터치하면 해당 일의 상세 내용과 장비 이슈가 여기에 표시됩니다.
                 </div>
             </div>
         </section>
 
-        <!-- [PART 3] 이슈 조회 섹션 -->
+        <!-- [PART 3] 이슈 조회 섹션 (색인 및 검색 기능 추가) -->
         <section id="tab-history" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
-                <h2 class="font-bold text-sm sm:text-base text-slate-800">🔍 장비 및 공정 이슈 조회</h2>
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-sm sm:text-base text-slate-800">🔍 장비 및 공정 이슈 조회</h2>
+                </div>
+                <!-- 검색 색인 입력창 -->
+                <div>
+                    <input type="text" id="history-search" oninput="filterHistory()" placeholder="🔍 키워드 검색 (예: 제네레이터, T-04, 9월 8일 등)..." class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
+                </div>
                 <div id="history-container" class="space-y-3">
                     <div class="p-4 text-center text-xs text-slate-400">데이터를 불러오는 중...</div>
                 </div>
@@ -287,15 +293,15 @@
             const isNightShift = (((diffWeeks % 2) + 2) % 2) === 1;
             const dayOfWeek = currentDate.getDay();
 
-            if (dayOfWeek === 0 || dayOfWeek === 6) return { shiftType: "휴무 (주말)", workHours: "휴무" };
-            if (isNightShift) return { shiftType: "야간조", workHours: "20:00 ~ 08:00" };
-            return { shiftType: "주간조", workHours: dayOfWeek === 5 ? "08:00 ~ 17:00 (단축)" : "08:00 ~ 20:00" };
+            if (dayOfWeek === 0 || dayOfWeek === 6) return { shiftType: "휴무", workHours: "휴무" };
+            if (isNightShift) return { shiftType: "야간", workHours: "20:00 ~ 08:00" };
+            return { shiftType: "주간", workHours: dayOfWeek === 5 ? "08:00 ~ 17:00 (단축)" : "08:00 ~ 20:00" };
         }
 
         function updateShiftDisplay() {
             const dateStr = document.getElementById('log-date').value;
             const res = calculateAutoShift(dateStr);
-            document.getElementById('shift-type-display').innerText = res.shiftType;
+            document.getElementById('shift-type-display').innerText = res.shiftType + "조";
             document.getElementById('work-hours-display').innerText = res.workHours;
         }
 
@@ -408,25 +414,49 @@
 
         async function loadHistory() {
             await fetchAllLogs();
+            renderHistoryList(cachedLogs);
+        }
+
+        function renderHistoryList(logsToRender) {
             const container = document.getElementById('history-container');
-            const dates = Object.keys(cachedLogs).sort().reverse();
+            const dates = Object.keys(logsToRender).sort().reverse();
 
             if(dates.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">저장된 기록이 없습니다.</div>';
+                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">검색 결과가 없습니다.</div>';
                 return;
             }
 
             container.innerHTML = dates.map(date => {
-                const log = cachedLogs[date];
+                const log = logsToRender[date];
+                const shiftName = log.shift ? log.shift.shiftType : '근무';
                 return `
-                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 history-card" data-search="${(log.date || date) + ' ' + shiftName + ' ' + (log.issues || '')}">
                         <div class="flex justify-between items-center text-xs font-bold text-blue-600 border-b pb-1">
-                            <span>📅 ${log.date || date} (${log.shift ? log.shift.shiftType : '근무'})</span>
+                            <span>📅 ${log.date || date} (${shiftName}조)</span>
                         </div>
                         <p class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">${log.issues || '이슈 내용 없음'}</p>
                     </div>
                 `;
             }).join('');
+        }
+
+        // 이슈 색인 검색 기능
+        function filterHistory() {
+            const keyword = document.getElementById('history-search').value.toLowerCase().trim();
+            if(!keyword) {
+                renderHistoryList(cachedLogs);
+                return;
+            }
+
+            let filtered = {};
+            Object.keys(cachedLogs).forEach(date => {
+                const log = cachedLogs[date];
+                const textTarget = ((log.date || date) + " " + (log.shift ? log.shift.shiftType : '') + " " + (log.issues || '') + " " + JSON.stringify(log.leaves || {})).toLowerCase();
+                if(textTarget.includes(keyword)) {
+                    filtered[date] = log;
+                }
+            });
+            renderHistoryList(filtered);
         }
 
         async function renderCalendar() {
@@ -440,7 +470,7 @@
 
             let gridHtml = '';
             for(let i=0; i<firstDay; i++) {
-                gridHtml += `<div class="h-16"></div>`;
+                gridHtml += `<div class="h-20"></div>`;
             }
 
             for(let d=1; d<=lastDate; d++) {
@@ -449,19 +479,41 @@
                 const dateStr = `${year}-${mm}-${dd}`;
                 const log = cachedLogs[dateStr] || cachedLogs[dateStr.replace(/-/g, '_')];
 
+                let shiftBadge = '';
                 let leaveTags = '';
-                if(log && log.leaves) {
-                    leaveTags = Object.entries(log.leaves)
-                        .filter(([k, v]) => v && v !== '정상근무')
-                        .map(([k, v]) => `<span class="bg-blue-100 text-blue-700 px-1 rounded text-[8px] font-bold block truncate">${k.slice(0,2)}:${v}</span>`)
-                        .join('');
+                
+                if(log) {
+                    // 근무 형태 표기 (주간/야간/휴무)
+                    const sType = log.shift ? log.shift.shiftType : calculateAutoShift(dateStr).shiftType;
+                    let badgeColor = "bg-slate-100 text-slate-600";
+                    if(sType === '주간') badgeColor = "bg-blue-100 text-blue-700";
+                    else if(sType === '야간') badgeColor = "bg-indigo-100 text-indigo-700";
+                    else if(sType === '휴무') badgeColor = "bg-rose-100 text-rose-700";
+
+                    shiftBadge = `<span class="${badgeColor} px-1 rounded text-[8px] font-bold inline-block mb-0.5">${sType}</span>`;
+
+                    // 2명 이상 근태 변경인원 다중 태그 처리
+                    if(log.leaves) {
+                        leaveTags = Object.entries(log.leaves)
+                            .filter(([k, v]) => v && v !== '정상근무')
+                            .map(([k, v]) => `<span class="bg-amber-100 text-amber-800 px-1 rounded text-[8px] font-bold block truncate">${k.slice(0,2)}:${v}</span>`)
+                            .join('');
+                    }
+                } else {
+                    // 기록이 없어도 기본 주간/야간 계산 표기
+                    const sType = calculateAutoShift(dateStr).shiftType;
+                    let badgeColor = sType === '휴무' ? "bg-rose-50 text-rose-400" : "bg-slate-50 text-slate-400";
+                    shiftBadge = `<span class="${badgeColor} px-1 rounded text-[8px] font-semibold inline-block mb-0.5">${sType}</span>`;
                 }
 
                 gridHtml += `
                     <div onclick="showDayDetail('${dateStr}')" 
-                         class="p-1 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-start h-16 text-left overflow-hidden ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
-                        <span class="text-xs font-bold text-slate-700">${d}</span>
-                        <div class="mt-0.5 space-y-0.5">${leaveTags}</div>
+                         class="p-1 border rounded-xl cursor-pointer hover:bg-blue-50 transition flex flex-col justify-start h-20 text-left overflow-hidden ${log ? 'bg-slate-50 border-blue-200' : 'border-slate-100'}">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-700">${d}</span>
+                            ${shiftBadge}
+                        </div>
+                        <div class="space-y-0.5 overflow-hidden mt-0.5">${leaveTags}</div>
                     </div>
                 `;
             }
@@ -478,16 +530,12 @@
                 return;
             }
 
-            let leaveStr = Object.entries(log.leaves || {}).map(([k,v]) => `${k}: ${v}`).join(' | ');
+            let leaveStr = Object.entries(log.leaves || {}).filter(([k,v]) => v !== '정상근무').map(([k,v]) => `${k}: ${v}`).join(' | ') || '전원 정상근무';
             let sheetText = log.sheet ? '완료' : '미완료';
             let stockText = log.stock ? '완료' : '미완료';
 
-            detailBox.innerHTML = `
-                <div><b>[근무조]</b> ${log.shift ? log.shift.shiftType + ' (' + log.shift.workHours + ')' : '-'}</div>
-                <div><b>[근태내역]</b> ${leaveStr || '전원 정상근무'}</div>
-                <div><b>[행정상태]</b> 실적마감(${sheetText}) / 재고관리(${stockText})</div>
-                <div class="mt-1 pt-1 border-t border-slate-200"><b>[장비 및 공정 이슈]</b><br>${log.issues ? log.issues.replace(/\n/g, '<br>') : '특이사항 없음'}</div>
-            `;
+            // 상세 일지 여백(공백) 타이트하게 압축
+            detailBox.innerHTML = `[근무조] ${log.shift ? log.shift.shiftType + '조 (' + log.shift.workHours + ')' : '-'}<br>[근태내역] ${leaveStr}<br>[행정상태] 실적마감(${sheetText}) / 재고관리(${stockText})<br>[장비 이슈] ${log.issues ? log.issues.replace(/\n/g, ' / ') : '특이사항 없음'}`;
         }
 
         function changeMonth(diff) {
@@ -502,7 +550,7 @@
             const stockText = data.stock ? '완료' : '미완료';
             
             const text = `[현장 일일 보고] (${data.date})
-- 근무형태: ${data.shift.shiftType} (${data.shift.workHours})
+- 근무형태: ${data.shift.shiftType}조 (${data.shift.workHours})
 - 근태사유: ${leaveStr}
 - 행정상태: 실적마감(${sheetText}) / 재고관리(${stockText})
 - 장비 및 공정 이슈:
@@ -521,7 +569,7 @@ ${data.issues || '특이사항 없음'}`;
             const sheetText = data.sheet ? '완료' : '미완료';
             const stockText = data.stock ? '완료' : '미완료';
             const csvContent = "\uFEFF" + "날짜,근무조,근태사유,실적마감,재고관리,이슈내용\n" +
-                `"${data.date}","${data.shift.shiftType}","${leaveStr}","${sheetText}","${stockText}","${data.issues.replace(/\n/g, ' ')}"`;
+                `"${data.date}","${data.shift.shiftType}조","${leaveStr}","${sheetText}","${stockText}","${data.issues.replace(/\n/g, ' ')}"`;
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
