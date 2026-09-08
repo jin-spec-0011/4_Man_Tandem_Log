@@ -8,7 +8,7 @@
     <style>
         @media print {
             body { background: white !important; color: black !important; }
-            .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, #export-buttons-box, .print-hide { display: none !important; }
+            .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, .print-hide { display: none !important; }
             #tab-export { display: block !important; }
             #a4-checklist-print-area { display: block !important; width: 100% !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
         }
@@ -35,7 +35,7 @@
             </div>
         </header>
 
-        <!-- 탭 메뉴 (4개로 정돈) -->
+        <!-- 탭 메뉴 -->
         <div class="grid grid-cols-4 gap-1.5 mb-4 no-print text-center">
             <button onclick="switchTab('daily')" id="btn-daily" class="py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-sm transition">입력</button>
             <button onclick="switchTab('calendar')" id="btn-calendar" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">캘린더</button>
@@ -168,10 +168,10 @@
             </div>
         </section>
 
-        <!-- [PART 4] 공유 및 체크리스트 통합 섹션 -->
+        <!-- [PART 4] 공유 및 체크리스트 통합 섹션 (이미지 형태 단독 구성 + 오늘 날짜 추가) -->
         <section id="tab-export" class="hidden space-y-4">
-            <!-- 기존 공유 버튼들 -->
-            <div id="export-buttons-box" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3 no-print">
+            <!-- 외부 공유 버튼들 -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3 no-print">
                 <h2 class="font-bold text-sm sm:text-base text-slate-800">📤 외부 공유 및 리포트 추출</h2>
                 <div class="space-y-2.5">
                     <button onclick="copyKakaoText()" class="w-full p-3.5 bg-amber-400 text-slate-900 font-bold text-xs sm:text-sm rounded-xl hover:bg-amber-500 transition flex items-center justify-center gap-2">
@@ -186,7 +186,7 @@
                 </div>
             </div>
 
-            <!-- 실시간 요약 미리보기 -->
+            <!-- 실시간 요약 미리보기 (카톡 공유용) -->
             <div id="print-area" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2 no-print">
                 <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2">📋 실시간 요약 미리보기</h3>
                 <div id="preview-box" class="text-[11px] sm:text-xs text-slate-600 space-y-1 font-mono bg-slate-50 p-3.5 rounded-xl whitespace-pre-wrap leading-relaxed">
@@ -194,10 +194,12 @@
                 </div>
             </div>
 
-            <!-- 체크리스트 뷰 (공유 탭 내부에 탑재) -->
+            <!-- 깔끔한 단독 체크리스트 화면 (이미지 디자인 반영 + 오늘 날짜 추가) -->
             <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/60 space-y-6">
-                <div class="text-center border-b pb-4">
+                <!-- 상단 타이틀 및 오늘 날짜 -->
+                <div class="text-center border-b pb-4 space-y-1">
                     <h2 class="text-base sm:text-lg font-black text-slate-900">📋 [현장 리더 통합 관리 체크리스트]</h2>
+                    <div id="ui-current-date" class="text-xs font-bold text-blue-600">오늘 날짜: 2026-09-09</div>
                 </div>
 
                 <!-- 1. 월간 체크리스트 -->
@@ -210,7 +212,7 @@
                             <span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>
                             <div>
                                 <b>월초 연차 및 휴무 계획 사전 취합</b>
-                                <p class="text-slate-500 text-[11px] mt-0.5">웹앱의 [연차/근태만 미리 저장하기] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, '대근 불가' 리스크가 생기는 공백 구간이 없는지 확인</p>
+                                <p class="text-slate-500 text-[11px] mt-0.5">웹앱의 [기간별 연차/근태 저장] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, '대근 불가' 리스크가 생기는 공백 구간이 없는지 확인</p>
                             </div>
                         </li>
                         <li class="flex items-start gap-2">
@@ -297,7 +299,7 @@
                     <h1 style="margin: 0; font-size: 18pt;">현장 리더 통합 관리 체크리스트</h1>
                     <div style="font-size: 9pt; opacity: 0.85; margin-top: 3px;">4인 체제 (오토메이션 6대 / 메인 8대)</div>
                 </div>
-                <div id="print-date-display" style="font-size: 10pt; font-weight: bold; background: rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 4px;">출력일자: 2026-09-08</div>
+                <div id="print-date-display" style="font-size: 10pt; font-weight: bold; background: rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 4px;">출력일자: 2026-09-09</div>
             </div>
 
             <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 1. 월간 (Monthly) 점검 체크리스트</h2>
@@ -363,6 +365,7 @@
         document.getElementById('log-start-date').value = todayStr;
         document.getElementById('log-end-date').value = todayStr;
         document.getElementById('print-date-display').innerText = "출력일자: " + todayStr;
+        document.getElementById('ui-current-date').innerText = "오늘 날짜: " + todayStr;
 
         let currentCalDate = new Date();
         let cachedLogs = {};
@@ -534,50 +537,6 @@
             localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
             alert('선택하신 기간 동안 데이터가 성공적으로 반영 및 저장되었습니다!');
             switchTab('export');
-        }
-
-        async function saveLeavePeriodToRealtime() {
-            const startDateStr = document.getElementById('log-start-date').value;
-            const endDateStr = document.getElementById('log-end-date').value || startDateStr;
-            if(!startDateStr) { alert('시작일을 선택해주세요.'); return; }
-
-            const start = new Date(startDateStr);
-            const end = new Date(endDateStr);
-            if(start > end) { alert('종료일이 시작일보다 빠를 수 없습니다.'); return; }
-
-            const leaves = getLeavesData();
-
-            let curr = new Date(start);
-            while(curr <= end) {
-                const year = curr.getFullYear();
-                const mm = String(curr.getMonth() + 1).padStart(2, '0');
-                const dd = String(curr.getDate()).padStart(2, '0');
-                const dateStr = `${year}-${mm}-${dd}`;
-                const shift = calculateAutoShift(dateStr);
-
-                let finalData;
-                if(cachedLogs[dateStr]) {
-                    finalData = { ...cachedLogs[dateStr], leaves: { ...cachedLogs[dateStr].leaves, ...leaves } };
-                } else {
-                    finalData = { date: dateStr, shift, leaves, issues: "", sheet: false, stock: false };
-                }
-
-                cachedLogs[dateStr] = finalData;
-
-                if(window.tandemRtdb) {
-                    try {
-                        const { database, ref, set } = window.tandemRtdb;
-                        await set(ref(database, 'daily_logs/' + dateStr.replace(/-/g, '_')), finalData);
-                    } catch (e) {
-                        console.warn("기간 연차 저장 예외:", e);
-                    }
-                }
-
-                curr.setDate(curr.getDate() + 1);
-            }
-
-            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
-            alert(`선택한 기간 동안 연차 및 근태 계획이 저장되었습니다!`);
         }
 
         async function loadHistory() {
