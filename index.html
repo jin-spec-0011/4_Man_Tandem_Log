@@ -8,30 +8,39 @@
     <style>
         @media print {
             body { background: white !important; color: black !important; }
-            .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, .print-hide { display: none !important; }
+            .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, #tab-checklist, .print-hide { display: none !important; }
             #a4-checklist-print-area { display: block !important; width: 100% !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
-            #print-area { display: none !important; }
         }
         input[type="date"] { -webkit-appearance: none; appearance: none; background-color: #fff; }
+        /* PC 모드 강제 적용 클래스 */
+        .pc-mode { max-width: 1024px !important; }
+        .pc-mode body { font-size: 15px !important; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 pb-12">
+<body class="bg-slate-100 text-slate-800 pb-12 transition-all duration-300">
 
-    <div class="max-w-xl mx-auto p-3 sm:p-6">
-        <!-- 헤더 -->
+    <div id="app-container" class="max-w-xl mx-auto p-3 sm:p-6">
+        <!-- 헤더 및 디바이스(아이폰/PC) 전환 버튼 -->
         <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200/60">
             <div>
                 <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">🏭 Tandem Ops</h1>
                 <p class="text-xs text-slate-500 mt-0.5">리더: 김진세 | 4인 체제 (오토 6 / 메인 8)</p>
             </div>
-            <div id="db-status" class="text-center bg-amber-50 border border-amber-200 text-amber-700 font-bold text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap">
-                Connecting...
+            <div class="flex items-center gap-2">
+                <!-- 아이폰/PC 화면 전환 버튼 -->
+                <button onclick="toggleDeviceView()" id="device-toggle-btn" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition no-print">
+                    💻 PC뷰로 보기
+                </button>
+                <div id="db-status" class="text-center bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap">
+                    RTDB Online
+                </div>
             </div>
         </header>
 
-        <!-- 탭 메뉴 -->
-        <div class="grid grid-cols-4 gap-1.5 mb-4 no-print text-center">
+        <!-- 탭 메뉴 (체크리스트 탭 추가) -->
+        <div class="grid grid-cols-5 gap-1.5 mb-4 no-print text-center">
             <button onclick="switchTab('daily')" id="btn-daily" class="py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-sm transition">입력</button>
+            <button onclick="switchTab('checklist')" id="btn-checklist" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">체크리스트</button>
             <button onclick="switchTab('calendar')" id="btn-calendar" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">캘린더</button>
             <button onclick="switchTab('history')" id="btn-history" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">이슈조회</button>
             <button onclick="switchTab('export')" id="btn-export" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">공유</button>
@@ -65,83 +74,42 @@
                 <div class="space-y-3">
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">근태 사유 선택 (기간 동안 일괄 적용)</label>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                        
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>김진세 (리더)</span>
                                 <select id="leave-김진세" onchange="onLeaveChange('김진세')" class="p-1.5 border rounded-lg text-xs bg-white">
-                                    <option value="정상근무">정상근무</option>
-                                    <option value="연차">연차</option>
-                                    <option value="휴가">휴가</option>
-                                    <option value="교육">교육</option>
-                                    <option value="병가">병가</option>
-                                    <option value="훈련">훈련</option>
-                                    <option value="반차">반차</option>
-                                    <option value="반반차">반반차</option>
-                                    <option value="육아">육아</option>
-                                    <option value="기타">기타 (직접입력)</option>
+                                    <option value="정상근무">정상근무</option><option value="연차">연차</option><option value="휴가">휴가</option><option value="교육">교육</option><option value="병가">병가</option><option value="훈련">훈련</option><option value="반차">반차</option><option value="반반차">반반차</option><option value="육아">육아</option><option value="기타">기타 (직접입력)</option>
                                 </select>
                             </div>
                             <input type="text" id="custom-leave-김진세" placeholder="김진세 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
-
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>김장환</span>
                                 <select id="leave-김장환" onchange="onLeaveChange('김장환')" class="p-1.5 border rounded-lg text-xs bg-white">
-                                    <option value="정상근무">정상근무</option>
-                                    <option value="연차">연차</option>
-                                    <option value="휴가">휴가</option>
-                                    <option value="교육">교육</option>
-                                    <option value="병가">병가</option>
-                                    <option value="훈련">훈련</option>
-                                    <option value="반차">반차</option>
-                                    <option value="반반차">반반차</option>
-                                    <option value="육아">육아</option>
-                                    <option value="기타">기타 (직접입력)</option>
+                                    <option value="정상근무">정상근무</option><option value="연차">연차</option><option value="휴가">휴가</option><option value="교육">교육</option><option value="병가">병가</option><option value="훈련">훈련</option><option value="반차">반차</option><option value="반반차">반반차</option><option value="육아">육아</option><option value="기타">기타 (직접입력)</option>
                                 </select>
                             </div>
                             <input type="text" id="custom-leave-김장환" placeholder="김장환 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
-
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>권의환</span>
                                 <select id="leave-권의환" onchange="onLeaveChange('권의환')" class="p-1.5 border rounded-lg text-xs bg-white">
-                                    <option value="정상근무">정상근무</option>
-                                    <option value="연차">연차</option>
-                                    <option value="휴가">휴가</option>
-                                    <option value="교육">교육</option>
-                                    <option value="병가">병가</option>
-                                    <option value="훈련">훈련</option>
-                                    <option value="반차">반차</option>
-                                    <option value="반반차">반반차</option>
-                                    <option value="육아">육아</option>
-                                    <option value="기타">기타 (직접입력)</option>
+                                    <option value="정상근무">정상근무</option><option value="연차">연차</option><option value="휴가">휴가</option><option value="교육">교육</option><option value="병가">병가</option><option value="훈련">훈련</option><option value="반차">반차</option><option value="반반차">반반차</option><option value="육아">육아</option><option value="기타">기타 (직접입력)</option>
                                 </select>
                             </div>
                             <input type="text" id="custom-leave-권의환" placeholder="권의환 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
-
                         <div class="space-y-1">
                             <div class="flex justify-between items-center text-xs font-bold text-slate-700">
                                 <span>김현진</span>
                                 <select id="leave-김현진" onchange="onLeaveChange('김현진')" class="p-1.5 border rounded-lg text-xs bg-white">
-                                    <option value="정상근무">정상근무</option>
-                                    <option value="연차">연차</option>
-                                    <option value="휴가">휴가</option>
-                                    <option value="교육">교육</option>
-                                    <option value="병가">병가</option>
-                                    <option value="훈련">훈련</option>
-                                    <option value="반차">반차</option>
-                                    <option value="반반차">반반차</option>
-                                    <option value="육아">육아</option>
-                                    <option value="기타">기타 (직접입력)</option>
+                                    <option value="정상근무">정상근무</option><option value="연차">연차</option><option value="휴가">휴가</option><option value="교육">교육</option><option value="병가">병가</option><option value="훈련">훈련</option><option value="반차">반차</option><option value="반반차">반반차</option><option value="육아">육아</option><option value="기타">기타 (직접입력)</option>
                                 </select>
                             </div>
                             <input type="text" id="custom-leave-김현진" placeholder="김현진 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
-
                     </div>
                 </div>
 
@@ -163,6 +131,127 @@
             </div>
         </section>
 
+        <!-- [PART 1.5] 체크리스트 탭 화면 (요청하신 이미지 디자인 반영) -->
+        <section id="tab-checklist" class="hidden space-y-4">
+            <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/60 space-y-6">
+                <div class="text-center border-b pb-4">
+                    <h2 class="text-lg font-black text-slate-900">📋 [현장 리더 통합 관리 체크리스트]</h2>
+                </div>
+
+                <!-- 1. 월간 체크리스트 -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">
+                        <span>📅</span> 1. 월간 (Monthly) 체크리스트
+                    </h3>
+                    <ul class="space-y-2 text-xs sm:text-sm text-slate-700 pl-2">
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div>
+                                <b>월초 연차 및 휴무 계획 사전 취합</b>
+                                <p class="text-slate-500 text-[11px] mt-0.5">웹앱의 [연차/근태만 미리 저장하기] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, '대근 불가' 리스크가 생기는 공백 구간이 없는지 확인</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div>
+                                <b>전사 필수 일정 파악</b>
+                                <p class="text-slate-500 text-[11px] mt-0.5">법정 의무 교육, 건강검진, 사내 행사 일정을 사내 캘린더와 웹앱 일정에 동기화</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div>
+                                <b>장비 정비 주간 확인</b>
+                                <p class="text-slate-500 text-[11px] mt-0.5">오토메이션(6대), 메인(8대) 중 대규모 정비나 예방 점검(PM)이 필요한 주간 미리 체크</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div>
+                                <b>행정 및 실적 마감 현황 점검</b>
+                                <p class="text-slate-500 text-[11px] mt-0.5">일일 실적마감과 셀 재고 관리가 누락 없이 잘 정착되고 있는지 월말에 최종 점검</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 2. 주간 체크리스트 -->
+                <div class="space-y-3 pt-2 border-t border-slate-100">
+                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">
+                        <span>📅</span> 2. 주간 (Weekly) 체크리스트
+                    </h3>
+                    <ul class="space-y-2 text-xs sm:text-sm text-slate-700 pl-2">
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div><b>W1 (첫째 주):</b> 이달의 전사 일정 공유 및 팀원들에게 휴무 조율 가이드(최소 유지 인력 기준) 리마인드</div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div><b>W2 (둘째 주):</b> 팀원들이 카톡방 및 웹앱에 올린 휴무·교육 일정의 중복 여부 및 대근 불가 공백 구간 최종 확인</div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div><b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통</div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                            <div><b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 한 주간 발생한 기술/공정 성과 데이터화 정리</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 3. 일간 및 주·야간 교대 실무 체크리스트 -->
+                <div class="space-y-3 pt-2 border-t border-slate-100">
+                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">
+                        <span>📅</span> 3. 일간 (Daily) 및 주·야간 교대 실무 체크리스트
+                    </h3>
+                    <ul class="space-y-3 text-xs sm:text-sm text-slate-700 pl-2">
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2">
+                                <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                                <b>[출근 직후 / 근태 확인]</b>
+                            </div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>웹앱 캘린더 및 카톡방을 통해 당일 휴무(연차/휴가/병가 등) 신청자 현황 최종 확인</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>대근 불가 장비(오토메이션/메인) 구동에 인원 공백 차질 여부 스캔</div>
+                            </div>
+                        </li>
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2">
+                                <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                                <b>[핵심 장비 및 공정 점검]</b>
+                            </div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>오토메이션(6대) 및 메인(8대) 구동 상태 및 에러 유무 확인</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>공정별 담당 현황 체크</div>
+                            </div>
+                        </li>
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2">
+                                <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                                <b>[행정 마감 및 이슈 기록]</b>
+                            </div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>일일 실적마감 완료 여부 체크</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>셀 재고 관리 흐름 이상 유무 체크</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>당일 발생한 장비 에러 및 조치 내역을 웹앱 [이슈 입력]에 상세히 기록</div>
+                            </div>
+                        </li>
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2">
+                                <span class="font-mono cursor-pointer select-none" onclick="toggleCheck(this)">[ ]</span>
+                                <b>[퇴근 전 교대 인수인계 및 공유]</b>
+                            </div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>웹앱의 [카카오톡 전달용 텍스트 복사] 버튼을 눌러 교대조 카톡방에 깔끔하게 공유</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer" onclick="toggleCheck(this)">[ ]</span>익일 예정된 휴무자 및 장비 점검 일정 사전 공유 확인</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
         <!-- [PART 2] 캘린더 뷰 섹션 -->
         <section id="tab-calendar" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
@@ -179,7 +268,6 @@
                 <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
 
-            <!-- 선택한 날짜 상세 일지 박스 정상 노출 -->
             <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/60 space-y-1.5">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
                     <span class="font-bold text-xs sm:text-sm text-slate-700">📌 선택한 날짜 상세 일지</span>
@@ -230,7 +318,7 @@
             </div>
         </section>
 
-        <!-- [PART 5] A4 전용 체크리스트 인쇄 레이아웃 (빈 체크박스 적용) -->
+        <!-- [PART 5] A4 전용 체크리스트 인쇄 레이아웃 -->
         <div id="a4-checklist-print-area" style="display: none; background: white; padding: 10px; font-family: Arial, sans-serif; color: #111;">
             <div style="background-color: #1e3a8a; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: flex-end; border-radius: 6px; margin-bottom: 15px;">
                 <div>
@@ -261,7 +349,7 @@
                 <div style="font-weight: bold; margin-bottom: 3px;">[출근 직후 / 근태 확인]</div>
                 <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 웹앱 캘린더 및 카톡방을 통한 당일 휴무 신청자 현황 최종 확인 / 대근 불가 장비 공백 리스크 스캔</div>
                 <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[핵심 장비 및 공정 점검]</div>
-                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 오토메이션(6대) 및 메인(8대) 구동 상태 및 에러 유무 확인 / 공정별 담당 현황 체크</div>
+                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 오토메이션(6대) 및 메인(8대) 구동 상태 및 에러 무 확인 / 공정별 담당 현황 체크</div>
                 <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[행정 마감 및 이슈 기록]</div>
                 <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 일일 실적마감 및 셀 재고 관리 흐름 이상 유무 체크 / 장비 에러 및 조치 내역 웹앱 기록</div>
                 <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[퇴근 전 교대 인수인계 및 공유]</div>
@@ -307,6 +395,36 @@
         let currentCalDate = new Date();
         let cachedLogs = {};
 
+        // 모바일/PC 뷰 토글 기능
+        let isPcMode = false;
+        function toggleDeviceView() {
+            isPcMode = !isPcMode;
+            const container = document.getElementById('app-container');
+            const btn = document.getElementById('device-toggle-btn');
+            if(isPcMode) {
+                container.classList.add('pc-mode');
+                btn.innerText = "📱 모바일뷰로 보기";
+                btn.className = "px-2.5 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold text-[11px] rounded-lg transition no-print";
+            } else {
+                container.classList.remove('pc-mode');
+                btn.innerText = "💻 PC뷰로 보기";
+                btn.className = "px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition no-print";
+            }
+        }
+
+        // 체크리스트 화면 내 체크박스 토글 기능 ([ ] <-> [X])
+        function toggleCheck(el) {
+            if(el.innerText === '[ ]') {
+                el.innerText = '[✔]';
+                el.style.color = '#2563eb';
+                el.style.fontWeight = 'bold';
+            } else {
+                el.innerText = '[ ]';
+                el.style.color = 'inherit';
+                el.style.fontWeight = 'normal';
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             const localData = localStorage.getItem('tandem_rtdb_logs');
             if(localData) { cachedLogs = JSON.parse(localData); }
@@ -329,7 +447,7 @@
         }
 
         function switchTab(tabName) {
-            ['daily', 'calendar', 'history', 'export'].forEach(t => {
+            ['daily', 'checklist', 'calendar', 'history', 'export'].forEach(t => {
                 document.getElementById('tab-' + t).classList.add('hidden');
                 document.getElementById('btn-' + t).className = "py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
             });
