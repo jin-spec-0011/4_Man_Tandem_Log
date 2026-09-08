@@ -8,7 +8,7 @@
     <style>
         @media print {
             body { background: white !important; color: black !important; }
-            .no-print, header, .grid-cols-4, #tab-daily, #tab-history, #tab-calendar, .print-hide { display: none !important; }
+            .no-print, header, .grid-cols-5, #tab-daily, #tab-checklist, #tab-history, #tab-calendar, .print-hide { display: none !important; }
             #tab-export { display: block !important; }
             #a4-checklist-print-area { display: block !important; width: 100% !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
         }
@@ -35,15 +35,16 @@
             </div>
         </header>
 
-        <!-- 탭 메뉴 -->
-        <div class="grid grid-cols-4 gap-1.5 mb-4 no-print text-center">
+        <!-- 탭 메뉴 (5개로 분리) -->
+        <div class="grid grid-cols-5 gap-1 mb-4 no-print text-center">
             <button onclick="switchTab('daily')" id="btn-daily" class="py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-sm transition">입력</button>
+            <button onclick="switchTab('checklist')" id="btn-checklist" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">체크리스트</button>
             <button onclick="switchTab('calendar')" id="btn-calendar" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">캘린더</button>
             <button onclick="switchTab('history')" id="btn-history" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">이슈조회</button>
-            <button onclick="switchTab('export')" id="btn-export" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">공유·체크리스트</button>
+            <button onclick="switchTab('export')" id="btn-export" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">공유</button>
         </div>
 
-        <!-- [PART 1] 일일 입력 섹션 -->
+        <!-- [PART 1] 일일 입력 섹션 (시작/종료일 오늘 날짜 자동 표기) -->
         <section id="tab-daily" class="space-y-4 no-print">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-4">
                 <div class="flex justify-between items-center">
@@ -128,7 +129,84 @@
             </div>
         </section>
 
-        <!-- [PART 2] 캘린더 뷰 섹션 -->
+        <!-- [PART 1.5] 독립된 체크리스트 탭 (웹앱 내 체크 및 요약 연동) -->
+        <section id="tab-checklist" class="hidden space-y-4">
+            <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/60 space-y-6">
+                <div class="text-center border-b pb-4 space-y-1">
+                    <h2 class="text-base sm:text-lg font-black text-slate-900">📋 [현장 리더 통합 관리 체크리스트]</h2>
+                    <div id="ui-current-date" class="text-xs font-bold text-blue-600">오늘 날짜: 2026-09-09</div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">📅 1. 월간 (Monthly) 체크리스트</h3>
+                    <ul class="space-y-2 text-xs sm:text-sm text-slate-700 pl-2">
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '월초 연차 및 휴무 계획 사전 취합')">[ ]</span>
+                            <div><b>월초 연차 및 휴무 계획 사전 취합</b><p class="text-slate-500 text-[11px] mt-0.5">웹앱의 기간별 연차/근태 저장 기능을 활용해 팀원들의 월간 휴무 및 교육 일정 등록 및 공백 확인</p></div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '전사 필수 일정 파악')">[ ]</span>
+                            <div><b>전사 필수 일정 파악</b><p class="text-slate-500 text-[11px] mt-0.5">법정 의무 교육, 건강검진, 사내 행사 일정 사내 캘린더 및 웹앱 일정 동기화</p></div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '장비 정비 주간 확인')">[ ]</span>
+                            <div><b>장비 정비 주간 확인</b><p class="text-slate-500 text-[11px] mt-0.5">오토메이션(6대), 메인(8대) 중 대규모 정비나 예방 점검(PM)이 필요한 주간 미리 체크</p></div>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '행정 및 실적 마감 현황 점검')">[ ]</span>
+                            <div><b>행정 및 실적 마감 현황 점검</b><p class="text-slate-500 text-[11px] mt-0.5">일일 실적마감과 셀 재고 관리가 누락 없이 잘 정착되고 있는지 월말에 최종 점검</p></div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="space-y-3 pt-2 border-t border-slate-100">
+                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">📅 2. 주간 (Weekly) 체크리스트</h3>
+                    <ul class="space-y-2 text-xs sm:text-sm text-slate-700 pl-2">
+                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, 'W1 전사 일정 공유 및 휴무 조율')">[ ]</span><div><b>W1 (첫째 주):</b> 전사 일정 공유 및 팀원 휴무 조율 가이드 리마인드</div></li>
+                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, 'W2 휴무 교육 일정 중복 확인')">[ ]</span><div><b>W2 (둘째 주):</b> 휴무·교육 일정 중복 여부 및 대근 불가 공백 최종 확인</div></li>
+                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, 'W3 자율 근태 고충 소통')">[ ]</span><div><b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통</div></li>
+                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, 'W4 월말 교육 마감 및 성과 정리')">[ ]</span><div><b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 기술/공정 성과 데이터화 정리</div></li>
+                    </ul>
+                </div>
+
+                <div class="space-y-3 pt-2 border-t border-slate-100">
+                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">📅 3. 일간 (Daily) 교대 실무 체크리스트</h3>
+                    <ul class="space-y-3 text-xs sm:text-sm text-slate-700 pl-2">
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '출근 직후 근태 및 인원 확인')">[ ]</span><b>[출근 직후 / 근태 확인]</b></div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '당일 휴무 신청자 현황 최종 확인')">[ ]</span>당일 휴무(연차/휴가/병가 등) 신청자 현황 최종 확인</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '대근 불가 장비 공백 스캔')">[ ]</span>대근 불가 장비 구동에 인원 공백 차질 여부 스캔</div>
+                            </div>
+                        </li>
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '핵심 장비 및 공정 점검 완료')">[ ]</span><b>[핵심 장비 및 공정 점검]</b></div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '오토메이션 메인 장비 상태 확인')">[ ]</span>오토메이션(6대) 및 메인(8대) 구동 상태 및 에러 유무 확인</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '공정별 담당 현황 체크 완료')">[ ]</span>공정별 담당 현황 체크 완료</div>
+                            </div>
+                        </li>
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '행정 마감 및 이슈 기록 완료')">[ ]</span><b>[행정 마감 및 이슈 기록]</b></div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '일일 실적마감 완료')">[ ]</span>일일 실적마감 완료 여부 체크</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '셀 재고 관리 이상 없음')">[ ]</span>셀 재고 관리 흐름 이상 유무 체크</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '장비 에러 조치 내역 웹앱 기록')">[ ]</span>당일 발생한 장비 에러 및 조치 내역을 웹앱에 상세히 기록</div>
+                            </div>
+                        </li>
+                        <li class="space-y-1.5">
+                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '퇴근 전 교대 인수인계 공유 완료')">[ ]</span><b>[퇴근 전 교대 인수인계 및 공유]</b></div>
+                            <div class="pl-6 space-y-1 text-slate-600">
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '카카오톡 전달용 텍스트 복사 공유')">[ ]</span>카카오톡 전달용 텍스트 복사 후 교대조 카톡방에 공유</div>
+                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold chk-box" onclick="toggleCheck(this, '익일 예정 휴무 장비 점검 사전 공유')">[ ]</span>익일 예정된 휴무자 및 장비 점검 일정 사전 공유 확인</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- [PART 2] 캘린더 뷰 섹션 (상세 일지 수정 기능 포함) -->
         <section id="tab-calendar" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
                 <div class="flex justify-between items-center">
@@ -144,13 +222,35 @@
                 <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
 
-            <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/60 space-y-1.5">
+            <!-- 선택한 날짜 상세 일지 및 수정 패널 -->
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
                     <span class="font-bold text-xs sm:text-sm text-slate-700">📌 선택한 날짜 상세 일지</span>
-                    <span id="selected-date-title" class="text-xs text-blue-600 font-bold">날짜를 선택해주세요</span>
+                    <div class="flex items-center gap-2">
+                        <span id="selected-date-title" class="text-xs text-blue-600 font-bold">날짜를 선택해주세요</span>
+                        <button id="edit-day-btn" onclick="toggleEditMode()" class="hidden px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-200">수정</button>
+                    </div>
                 </div>
+                <!-- 조회 모드 박스 -->
                 <div id="selected-day-detail" class="text-[11px] sm:text-xs text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-xl min-h-[60px] whitespace-pre-wrap leading-tight">
                     달력에서 날짜를 터치하면 해당 일의 상세 내용과 장비 이슈가 여기에 표시됩니다.
+                </div>
+                <!-- 수정 모드 패널 (숨김 상태) -->
+                <div id="selected-day-edit-box" class="hidden space-y-3 pt-2">
+                    <div class="text-[11px] font-bold text-slate-500">근태 수정 (김진세/김장환/권의환/김현진):</div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>김진세: <input type="text" id="edit-김진세" class="w-full p-1 border rounded text-xs bg-white"></div>
+                        <div>김장환: <input type="text" id="edit-김장환" class="w-full p-1 border rounded text-xs bg-white"></div>
+                        <div>권의환: <input type="text" id="edit-권의환" class="w-full p-1 border rounded text-xs bg-white"></div>
+                        <div>김현진: <input type="text" id="edit-김현진" class="w-full p-1 border rounded text-xs bg-white"></div>
+                    </div>
+                    <div class="text-[11px] font-bold text-slate-500">장비 및 공정 이슈 수정:</div>
+                    <textarea id="edit-issues" rows="3" class="w-full p-2 border rounded-xl text-xs bg-white"></textarea>
+                    <div class="flex gap-4 text-xs font-bold">
+                        <label><input type="checkbox" id="edit-sheet"> 실적마감</label>
+                        <label><input type="checkbox" id="edit-stock"> 재고관리</label>
+                    </div>
+                    <button onclick="saveDayEdit()" class="w-full bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold shadow-sm">수정사항 저장하기</button>
                 </div>
             </div>
         </section>
@@ -168,9 +268,8 @@
             </div>
         </section>
 
-        <!-- [PART 4] 공유 및 체크리스트 통합 섹션 (이미지 형태 단독 구성 + 오늘 날짜 추가) -->
+        <!-- [PART 4] 공유 섹션 (체크리스트 요약 내용 자동 포함) -->
         <section id="tab-export" class="hidden space-y-4">
-            <!-- 외부 공유 버튼들 -->
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3 no-print">
                 <h2 class="font-bold text-sm sm:text-base text-slate-800">📤 외부 공유 및 리포트 추출</h2>
                 <div class="space-y-2.5">
@@ -186,108 +285,11 @@
                 </div>
             </div>
 
-            <!-- 실시간 요약 미리보기 (카톡 공유용) -->
-            <div id="print-area" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2 no-print">
-                <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2">📋 실시간 요약 미리보기</h3>
+            <!-- 실시간 요약 미리보기 (체크리스트 체크 항목 요약 반영) -->
+            <div id="print-area" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
+                <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2">📋 실시간 요약 미리보기 (체크리스트 요약 포함)</h3>
                 <div id="preview-box" class="text-[11px] sm:text-xs text-slate-600 space-y-1 font-mono bg-slate-50 p-3.5 rounded-xl whitespace-pre-wrap leading-relaxed">
                     데이터를 입력해주세요.
-                </div>
-            </div>
-
-            <!-- 깔끔한 단독 체크리스트 화면 (이미지 디자인 반영 + 오늘 날짜 추가) -->
-            <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/60 space-y-6">
-                <!-- 상단 타이틀 및 오늘 날짜 -->
-                <div class="text-center border-b pb-4 space-y-1">
-                    <h2 class="text-base sm:text-lg font-black text-slate-900">📋 [현장 리더 통합 관리 체크리스트]</h2>
-                    <div id="ui-current-date" class="text-xs font-bold text-blue-600">오늘 날짜: 2026-09-09</div>
-                </div>
-
-                <!-- 1. 월간 체크리스트 -->
-                <div class="space-y-3">
-                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">
-                        <span>📅</span> 1. 월간 (Monthly) 체크리스트
-                    </h3>
-                    <ul class="space-y-2 text-xs sm:text-sm text-slate-700 pl-2">
-                        <li class="flex items-start gap-2">
-                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>
-                            <div>
-                                <b>월초 연차 및 휴무 계획 사전 취합</b>
-                                <p class="text-slate-500 text-[11px] mt-0.5">웹앱의 [기간별 연차/근태 저장] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, '대근 불가' 리스크가 생기는 공백 구간이 없는지 확인</p>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>
-                            <div>
-                                <b>전사 필수 일정 파악</b>
-                                <p class="text-slate-500 text-[11px] mt-0.5">법정 의무 교육, 건강검진, 사내 행사 일정을 사내 캘린더와 웹앱 일정에 동기화</p>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>
-                            <div>
-                                <b>장비 정비 주간 확인</b>
-                                <p class="text-slate-500 text-[11px] mt-0.5">오토메이션(6대), 메인(8대) 중 대규모 정비나 예방 점검(PM)이 필요한 주간 미리 체크</p>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>
-                            <div>
-                                <b>행정 및 실적 마감 현황 점검</b>
-                                <p class="text-slate-500 text-[11px] mt-0.5">일일 실적마감과 셀 재고 관리가 누락 없이 잘 정착되고 있는지 월말에 최종 점검</p>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- 2. 주간 체크리스트 -->
-                <div class="space-y-3 pt-2 border-t border-slate-100">
-                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">
-                        <span>📅</span> 2. 주간 (Weekly) 체크리스트
-                    </h3>
-                    <ul class="space-y-2 text-xs sm:text-sm text-slate-700 pl-2">
-                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><div><b>W1 (첫째 주):</b> 이달의 전사 일정 공유 및 팀원들에게 휴무 조율 가이드(최소 유지 인력 기준) 리마인드</div></li>
-                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><div><b>W2 (둘째 주):</b> 팀원들이 카톡방 및 웹앱에 올린 휴무·교육 일정의 중복 여부 및 대근 불가 공백 구간 최종 확인</div></li>
-                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><div><b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통</div></li>
-                        <li class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><div><b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 한 주간 발생한 기술/공정 성과 데이터화 정리</div></li>
-                    </ul>
-                </div>
-
-                <!-- 3. 일간 및 주·야간 교대 실무 체크리스트 -->
-                <div class="space-y-3 pt-2 border-t border-slate-100">
-                    <h3 class="font-bold text-sm text-blue-900 flex items-center gap-1.5">
-                        <span>📅</span> 3. 일간 (Daily) 및 주·야간 교대 실무 체크리스트
-                    </h3>
-                    <ul class="space-y-3 text-xs sm:text-sm text-slate-700 pl-2">
-                        <li class="space-y-1.5">
-                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><b>[출근 직후 / 근태 확인]</b></div>
-                            <div class="pl-6 space-y-1 text-slate-600">
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>웹앱 캘린더 및 카톡방을 통해 당일 휴무(연차/휴가/병가 등) 신청자 현황 최종 확인</div>
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>대근 불가 장비(오토메이션/메인) 구동에 인원 공백 차질 여부 스캔</div>
-                            </div>
-                        </li>
-                        <li class="space-y-1.5">
-                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><b>[핵심 장비 및 공정 점검]</b></div>
-                            <div class="pl-6 space-y-1 text-slate-600">
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>오토메이션(6대) 및 메인(8대) 구동 상태 및 에러 유무 확인</div>
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>공정별 담당 현황 체크</div>
-                            </div>
-                        </li>
-                        <li class="space-y-1.5">
-                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><b>[행정 마감 및 이슈 기록]</b></div>
-                            <div class="pl-6 space-y-1 text-slate-600">
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>일일 실적마감 완료 여부 체크</div>
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>셀 재고 관리 흐름 이상 유무 체크</div>
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>당일 발생한 장비 에러 및 조치 내역을 웹앱 [이슈 입력]에 상세히 기록</div>
-                            </div>
-                        </li>
-                        <li class="space-y-1.5">
-                            <div class="flex items-start gap-2"><span class="font-mono cursor-pointer select-none text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span><b>[퇴근 전 교대 인수인계 및 공유]</b></div>
-                            <div class="pl-6 space-y-1 text-slate-600">
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>웹앱의 [카카오톡 전달용 텍스트 복사] 버튼을 눌러 교대조 카톡방에 깔끔하게 공유</div>
-                                <div class="flex items-start gap-2"><span class="font-mono cursor-pointer text-blue-600 font-bold" onclick="toggleCheck(this)">[ ]</span>익일 예정된 휴무자 및 장비 점검 일정 사전 공유 확인</div>
-                            </div>
-                        </li>
-                    </ul>
                 </div>
             </div>
         </section>
@@ -304,28 +306,28 @@
 
             <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 1. 월간 (Monthly) 점검 체크리스트</h2>
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
-                <div style="margin-bottom: 5px;">☐ <b>월초 연차 및 휴무 계획 사전 취합:</b> 웹앱의 [기간별 연차/근태 저장] 기능을 활용해 팀원들의 월간 휴무 및 교육 일정을 미리 달력에 등록하고, 대근 불가 리스크 공백 구간 확인</div>
-                <div style="margin-bottom: 5px;">☐ <b>전사 필수 일정 파악:</b> 법정 의무 교육, 건강검진, 사내 행사 일정 사내 캘린더 및 웹앱 일정 동기화</div>
-                <div style="margin-bottom: 5px;">☐ <b>장비 정비 주간 확인:</b> 오토메이션(6대), 메인(8대) 대규모 정비 및 예방 점검(PM) 주간 사전 체크</div>
-                <div>☐ <b>행정 및 실적 마감 점검:</b> 일일 실적마감과 셀 재고 관리 흐름 월말 최종 정착 여부 검수</div>
+                <div style="margin-bottom: 5px;">☐ <b>월초 연차 및 휴무 계획 사전 취합:</b> 팀원 월간 휴무 및 교육 일정 달력 등록 및 공백 확인</div>
+                <div style="margin-bottom: 5px;">☐ <b>전사 필수 일정 파악:</b> 법정 의무 교육, 건강검진, 사내 행사 일정 사내 캘린더 동기화</div>
+                <div style="margin-bottom: 5px;">☐ <b>장비 정비 주간 확인:</b> 오토메이션(6대), 메인(8대) 대규모 정비 및 예방 점검(PM) 체크</div>
+                <div>☐ <b>행정 및 실적 마감 점검:</b> 일일 실적마감과 셀 재고 관리 흐름 최종 정착 여부 검수</div>
             </div>
 
             <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 2. 주간 (Weekly) 점검 체크리스트</h2>
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
-                <div style="margin-bottom: 5px;">☐ <b>W1 (첫째 주):</b> 이달의 전사 일정 공유 및 팀원들에게 휴무 조율 가이드(최소 유지 인력 기준) 리마인드</div>
-                <div style="margin-bottom: 5px;">☐ <b>W2 (둘째 주):</b> 팀원들이 카톡방 및 웹앱에 올린 휴무·교육 일정 중복 여부 및 대근 불가 공백 최종 확인</div>
-                <div style="margin-bottom: 5px;">☐ <b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통 및 해소</div>
-                <div>☐ <b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 한 주간 발생한 기술/공정 성과 데이터화 정리</div>
+                <div style="margin-bottom: 5px;">☐ <b>W1 (첫째 주):</b> 전사 일정 공유 및 휴무 조율 가이드 리마인드</div>
+                <div style="margin-bottom: 5px;">☐ <b>W2 (둘째 주):</b> 휴무·교육 일정 중복 여부 및 대근 불가 공백 최종 확인</div>
+                <div style="margin-bottom: 5px;">☐ <b>W3 (셋째 주):</b> 자율 근태 운영 중 팀원들 간 애로사항이나 현장 고충 소통</div>
+                <div>☐ <b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 기술/공정 성과 데이터화 정리</div>
             </div>
 
             <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 3. 일간 (Daily) 및 주·야간 교대 실무 체크리스트</h2>
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
                 <div style="font-weight: bold; margin-bottom: 3px;">[출근 직후 / 근태 확인]</div>
-                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 웹앱 캘린더 및 카톡방을 통한 당일 휴무 신청자 현황 최종 확인 / 대근 불가 장비 공백 리스크 스캔</div>
+                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 당일 휴무 신청자 현황 최종 확인 / 대근 불가 장비 공백 리스크 스캔</div>
                 <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[핵심 장비 및 공정 점검]</div>
                 <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 오토메이션(6대) 및 메인(8대) 구동 상태 및 에러 유무 확인 / 공정별 담당 현황 체크</div>
                 <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[행정 마감 및 이슈 기록]</div>
-                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 일일 실적마감과 셀 재고 관리 흐름 이상 유무 체크 / 장비 에러 및 조치 내역 웹앱 기록</div>
+                <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 일일 실적마감과 셀 재고 관리 흐름 체크 / 장비 에러 및 조치 내역 웹앱 기록</div>
                 <div style="font-weight: bold; margin-top: 6px; margin-bottom: 3px;">[퇴근 전 교대 인수인계 및 공유]</div>
                 <div style="margin-left: 15px; color: #334155;">- 카카오톡 전달용 텍스트 복사 후 교대조 공유 / 익일 예정된 휴무자 및 점검 일정 사전 공유</div>
             </div>
@@ -361,6 +363,7 @@
     </script>
 
     <script>
+        // 오늘 날짜 자동 표기
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('log-start-date').value = todayStr;
         document.getElementById('log-end-date').value = todayStr;
@@ -369,6 +372,8 @@
 
         let currentCalDate = new Date();
         let cachedLogs = {};
+        let checkedItems = [];
+        let selectedDateForEdit = null;
 
         // 모바일/PC 뷰 토글 기능
         let isPcMode = false;
@@ -387,17 +392,20 @@
             }
         }
 
-        // 체크리스트 화면 내 체크박스 토글 기능 ([ ] <-> [✔])
-        function toggleCheck(el) {
+        // 체크리스트 항목 체크 및 요약 연동
+        function toggleCheck(el, labelText) {
             if(el.innerText === '[ ]') {
                 el.innerText = '[✔]';
                 el.style.color = '#2563eb';
                 el.style.fontWeight = 'bold';
+                if(!checkedItems.includes(labelText)) checkedItems.push(labelText);
             } else {
                 el.innerText = '[ ]';
                 el.style.color = 'inherit';
                 el.style.fontWeight = 'normal';
+                checkedItems = checkedItems.filter(item => item !== labelText);
             }
+            updatePreview();
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -422,12 +430,16 @@
         }
 
         function switchTab(tabName) {
-            ['daily', 'calendar', 'history', 'export'].forEach(t => {
-                document.getElementById('tab-' + t).classList.add('hidden');
-                document.getElementById('btn-' + t).className = "py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
+            ['daily', 'checklist', 'calendar', 'history', 'export'].forEach(t => {
+                const el = document.getElementById('tab-' + t);
+                if(el) el.classList.add('hidden');
+                const btn = document.getElementById('btn-' + t);
+                if(btn) btn.className = "py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
             });
-            document.getElementById('tab-' + tabName).classList.remove('hidden');
-            document.getElementById('btn-' + tabName).className = "py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-sm transition";
+            const targetTab = document.getElementById('tab-' + tabName);
+            if(targetTab) targetTab.classList.remove('hidden');
+            const targetBtn = document.getElementById('btn-' + tabName);
+            if(targetBtn) targetBtn.className = "py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-sm transition";
 
             if(tabName === 'export') updatePreview();
             if(tabName === 'history') loadHistory();
@@ -644,12 +656,20 @@
         }
 
         function showDayDetail(dateStr) {
+            selectedDateForEdit = dateStr;
             const log = cachedLogs[dateStr] || cachedLogs[dateStr.replace(/-/g, '_')];
             document.getElementById('selected-date-title').innerText = dateStr;
             const detailBox = document.getElementById('selected-day-detail');
+            const editBtn = document.getElementById('edit-day-btn');
+            editBtn.classList.remove('hidden');
+
+            // 수정 패널 숨기기 및 기본 뷰 보이기
+            detailBox.classList.remove('hidden');
+            document.getElementById('selected-day-edit-box').classList.add('hidden');
+            editBtn.innerText = "수정";
 
             if(!log) {
-                detailBox.innerHTML = '<span class="text-slate-400">작성된 일지가 없는 날짜입니다.</span>';
+                detailBox.innerHTML = '<span class="text-slate-400">작성된 일지가 없는 날짜입니다. (수정 버튼을 눌러 생성 가능)</span>';
                 return;
             }
 
@@ -658,6 +678,69 @@
             let stockText = log.stock ? '완료' : '미완료';
 
             detailBox.innerHTML = `[근무조] ${log.shift ? log.shift.shiftType + '조 (' + log.shift.workHours + ')' : '-'}<br>[근태내역] ${leaveStr}<br>[행정상태] 실적마감(${sheetText}) / 재고관리(${stockText})<br>[장비 이슈] ${log.issues ? log.issues.replace(/\n/g, ' / ') : '특이사항 없음'}`;
+        }
+
+        // 캘린더 날짜 상세 일지 수정 모드 토글
+        function toggleEditMode() {
+            if(!selectedDateForEdit) return;
+            const detailBox = document.getElementById('selected-day-detail');
+            const editBox = document.getElementById('selected-day-edit-box');
+            const editBtn = document.getElementById('edit-day-btn');
+            const log = cachedLogs[selectedDateForEdit] || cachedLogs[selectedDateForEdit.replace(/-/g, '_')] || {};
+
+            if(editBox.classList.contains('hidden')) {
+                editBox.classList.remove('hidden');
+                detailBox.classList.add('hidden');
+                editBtn.innerText = "취소";
+
+                // 입력 필드에 기존 데이터 채우기
+                const leaves = log.leaves || {};
+                document.getElementById('edit-김진세').value = leaves["김진세"] || '정상근무';
+                document.getElementById('edit-김장환').value = leaves["김장환"] || '정상근무';
+                document.getElementById('edit-권의환').value = leaves["권의환"] || '정상근무';
+                document.getElementById('edit-김현진').value = leaves["김현진"] || '정상근무';
+                document.getElementById('edit-issues').value = log.issues || '';
+                document.getElementById('edit-sheet').checked = !!log.sheet;
+                document.getElementById('edit-stock').checked = !!log.stock;
+            } else {
+                editBox.classList.add('hidden');
+                detailBox.classList.remove('hidden');
+                editBtn.innerText = "수정";
+            }
+        }
+
+        // 수정사항 저장
+        async function saveDayEdit() {
+            if(!selectedDateForEdit) return;
+            const dateStr = selectedDateForEdit;
+            const shift = calculateAutoShift(dateStr);
+
+            const leaves = {
+                "김진세": document.getElementById('edit-김진세').value || '정상근무',
+                "김장환": document.getElementById('edit-김장환').value || '정상근무',
+                "권의환": document.getElementById('edit-권의환').value || '정상근무',
+                "김현진": document.getElementById('edit-김현진').value || '정상근무'
+            };
+            const issues = document.getElementById('edit-issues').value;
+            const sheet = document.getElementById('edit-sheet').checked;
+            const stock = document.getElementById('edit-stock').checked;
+
+            const updatedData = { date: dateStr, shift, leaves, issues, sheet, stock };
+            cachedLogs[dateStr] = updatedData;
+            localStorage.setItem('tandem_rtdb_logs', JSON.stringify(cachedLogs));
+
+            if(window.tandemRtdb) {
+                try {
+                    const { database, ref, set } = window.tandemRtdb;
+                    await set(ref(database, 'daily_logs/' + dateStr.replace(/-/g, '_')), updatedData);
+                } catch (e) {
+                    console.error("수정 저장 오류:", e);
+                }
+            }
+
+            alert(`[${dateStr}] 일지가 성공적으로 수정되었습니다!`);
+            renderCalendar();
+            showDayDetail(dateStr);
         }
 
         function changeMonth(diff) {
@@ -675,12 +758,17 @@
             const stockText = document.getElementById('check-stock').checked ? '완료' : '미완료';
             const issues = document.getElementById('issue-text').value;
             
+            let checklistSummary = "";
+            if(checkedItems.length > 0) {
+                checklistSummary = "\n- 주요 체크리스트 확인:\n  * " + checkedItems.join("\n  * ");
+            }
+
             const text = `[현장 기간 보고] (${startDateStr} ~ ${endDateStr})
 - 근무형태: ${shift.shiftType}조 (${shift.workHours})
 - 근태사유: ${leaveStr}
 - 행정상태: 실적마감(${sheetText}) / 재고관리(${stockText})
 - 장비 및 공정 이슈:
-${issues || '특이사항 없음'}`;
+${issues || '특이사항 없음'}${checklistSummary}`;
 
             document.getElementById('preview-box').innerText = text;
         }
