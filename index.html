@@ -48,67 +48,77 @@
                         <input type="date" id="log-date" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
-                        <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">근무 형태 설정</div>
-                        <div class="flex gap-2 items-center">
-                            <select id="shift-type-select" onchange="onShiftTypeChange()" class="p-1.5 border rounded-lg text-xs bg-white font-bold text-blue-600">
-                                <option value="auto">자동 계산</option>
-                                <option value="주간조">주간조</option>
-                                <option value="야간조">야간조</option>
-                                <option value="휴무">휴무</option>
-                                <option value="기타">기타 (직접입력)</option>
-                            </select>
-                            <input type="text" id="custom-shift-input" placeholder="근무형태 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
-                        </div>
-                        <div id="shift-info-display" class="text-[11px] text-slate-500 mt-1 font-semibold">-</div>
+                        <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">근무 형태 자동 표기</div>
+                        <div id="shift-type-display" class="font-black text-blue-600 text-xs sm:text-sm">-</div>
+                        <div id="work-hours-display" class="text-[11px] text-slate-500 mt-0.5 font-semibold">-</div>
                     </div>
                 </div>
 
-                <!-- 팀원 근태 및 사유 선택 -->
+                <!-- 팀원 근태 사유 선택 (기타 수기입력 포함) -->
                 <div class="space-y-3">
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">팀원 근태 및 사유 입력</label>
-                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                            <span>김장환 (T-04)</span>
-                            <select id="leave-김장환" class="p-1.5 border rounded-lg text-xs bg-white">
-                                <option value="정상근무">정상근무</option>
-                                <option value="연차">연차</option>
-                                <option value="휴가">휴가</option>
-                                <option value="교육">교육</option>
-                                <option value="병가">병가</option>
-                                <option value="훈련">훈련</option>
-                                <option value="반차">반차</option>
-                                <option value="반반차">반반차</option>
-                                <option value="육아">육아</option>
-                            </select>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">팀원 근태 사유 선택</label>
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                        
+                        <!-- 김장환 -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                                <span>김장환 (T-04)</span>
+                                <select id="leave-김장환" onchange="onLeaveChange('김장환')" class="p-1.5 border rounded-lg text-xs bg-white">
+                                    <option value="정상근무">정상근무</option>
+                                    <option value="연차">연차</option>
+                                    <option value="휴가">휴가</option>
+                                    <option value="교육">교육</option>
+                                    <option value="병가">병가</option>
+                                    <option value="훈련">훈련</option>
+                                    <option value="반차">반차</option>
+                                    <option value="반반차">반반차</option>
+                                    <option value="육아">육아</option>
+                                    <option value="기타">기타 (직접입력)</option>
+                                </select>
+                            </div>
+                            <input type="text" id="custom-leave-김장환" placeholder="김장환 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                            <span>권의환 (T-1)</span>
-                            <select id="leave-권의환" class="p-1.5 border rounded-lg text-xs bg-white">
-                                <option value="정상근무">정상근무</option>
-                                <option value="연차">연차</option>
-                                <option value="휴가">휴가</option>
-                                <option value="교육">교육</option>
-                                <option value="병가">병가</option>
-                                <option value="훈련">훈련</option>
-                                <option value="반차">반차</option>
-                                <option value="반반차">반반차</option>
-                                <option value="육아">육아</option>
-                            </select>
+
+                        <!-- 권의환 -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                                <span>권의환 (T-1)</span>
+                                <select id="leave-권의환" onchange="onLeaveChange('권의환')" class="p-1.5 border rounded-lg text-xs bg-white">
+                                    <option value="정상근무">정상근무</option>
+                                    <option value="연차">연차</option>
+                                    <option value="휴가">휴가</option>
+                                    <option value="교육">교육</option>
+                                    <option value="병가">병가</option>
+                                    <option value="훈련">훈련</option>
+                                    <option value="반차">반차</option>
+                                    <option value="반반차">반반차</option>
+                                    <option value="육아">육아</option>
+                                    <option value="기타">기타 (직접입력)</option>
+                                </select>
+                            </div>
+                            <input type="text" id="custom-leave-권의환" placeholder="권의환 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                            <span>김현진 (T-04)</span>
-                            <select id="leave-김현진" class="p-1.5 border rounded-lg text-xs bg-white">
-                                <option value="정상근무">정상근무</option>
-                                <option value="연차">연차</option>
-                                <option value="휴가">휴가</option>
-                                <option value="교육">교육</option>
-                                <option value="병가">병가</option>
-                                <option value="훈련">훈련</option>
-                                <option value="반차">반차</option>
-                                <option value="반반차">반반차</option>
-                                <option value="육아">육아</option>
-                            </select>
+
+                        <!-- 김현진 -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                                <span>김현진 (T-04)</span>
+                                <select id="leave-김현진" onchange="onLeaveChange('김현진')" class="p-1.5 border rounded-lg text-xs bg-white">
+                                    <option value="정상근무">정상근무</option>
+                                    <option value="연차">연차</option>
+                                    <option value="휴가">휴가</option>
+                                    <option value="교육">교육</option>
+                                    <option value="병가">병가</option>
+                                    <option value="훈련">훈련</option>
+                                    <option value="반차">반차</option>
+                                    <option value="반반차">반반차</option>
+                                    <option value="육아">육아</option>
+                                    <option value="기타">기타 (직접입력)</option>
+                                </select>
+                            </div>
+                            <input type="text" id="custom-leave-김현진" placeholder="김현진 근태 사유 직접입력" class="hidden w-full p-1.5 border rounded-lg text-xs bg-white">
                         </div>
+
                     </div>
                 </div>
 
@@ -206,7 +216,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 전역에서 접근할 수 있도록 window에 등록
         window.tandemDb = { db, collection, doc, setDoc, getDocs };
     </script>
 
@@ -214,9 +223,8 @@
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('log-date').value = todayStr;
         let currentCalDate = new Date();
-        let cachedLogs = {}; // 파이어베이스 데이터 캐시
+        let cachedLogs = {};
 
-        // 앱 실행 시 데이터 미리 로드
         window.addEventListener('DOMContentLoaded', () => {
             fetchAllLogs();
         });
@@ -261,40 +269,42 @@
             return { shiftType: "주간조", workHours: dayOfWeek === 5 ? "08:00 ~ 17:00 (단축)" : "08:00 ~ 20:00" };
         }
 
-        function onShiftTypeChange() {
-            const val = document.getElementById('shift-type-select').value;
-            const customInput = document.getElementById('custom-shift-input');
-            if(val === '기타') customInput.classList.remove('hidden');
-            else customInput.classList.add('hidden');
-            updateShiftDisplay();
-        }
-
         function updateShiftDisplay() {
-            const type = document.getElementById('shift-type-select').value;
             const dateStr = document.getElementById('log-date').value;
-            let res;
-            if(type === 'auto') res = calculateAutoShift(dateStr);
-            else if(type === '기타') res = { shiftType: document.getElementById('custom-shift-input').value || '기타', workHours: '직접입력' };
-            else res = { shiftType: type, workHours: type === '휴무' ? '휴무' : '설정 시간' };
-            document.getElementById('shift-info-display').innerText = `${res.shiftType} | ${res.workHours}`;
+            const res = calculateAutoShift(dateStr);
+            document.getElementById('shift-type-display').innerText = res.shiftType;
+            document.getElementById('work-hours-display').innerText = res.workHours;
         }
 
         document.getElementById('log-date').addEventListener('change', updateShiftDisplay);
-        document.getElementById('custom-shift-input').addEventListener('input', updateShiftDisplay);
         updateShiftDisplay();
+
+        function onLeaveChange(name) {
+            const selectVal = document.getElementById(`leave-${name}`).value;
+            const customInput = document.getElementById(`custom-leave-${name}`);
+            if(selectVal === '기타') {
+                customInput.classList.remove('hidden');
+            } else {
+                customInput.classList.add('hidden');
+            }
+        }
 
         function getLogData() {
             const date = document.getElementById('log-date').value;
-            const type = document.getElementById('shift-type-select').value;
-            let shift;
-            if(type === 'auto') shift = calculateAutoShift(date);
-            else if(type === '기타') shift = { shiftType: document.getElementById('custom-shift-input').value || '기타', workHours: '직접입력' };
-            else shift = { shiftType: type, workHours: '-' };
+            const shift = calculateAutoShift(date);
+
+            const getLeaveValue = (name) => {
+                const val = document.getElementById(`leave-${name}`).value;
+                if(val === '기타') {
+                    return document.getElementById(`custom-leave-${name}`).value || '기타';
+                }
+                return val;
+            };
 
             const leaves = {
-                "김장환": document.getElementById('leave-김장환').value,
-                "권의환": document.getElementById('leave-권의환').value,
-                "김현진": document.getElementById('leave-김현진').value
+                "김장환": getLeaveValue("김장환"),
+                "권의환": getLeaveValue("권의환"),
+                "김현진": getLeaveValue("김현진")
             };
             const issues = document.getElementById('issue-text').value;
             const sheet = document.getElementById('check-sheet').checked ? '완료' : '미완료';
@@ -303,7 +313,6 @@
             return { date, shift, leaves, issues, sheet, stock };
         }
 
-        // Firebase에 데이터 저장
         async function saveLogToFirebase() {
             const data = getLogData();
             if(!window.tandemDb) {
@@ -313,7 +322,7 @@
             try {
                 const { db, doc, setDoc } = window.tandemDb;
                 await setDoc(doc(db, "daily_logs", data.date), data);
-                cachedLogs[data.date] = data; // 캐시 업데이트
+                cachedLogs[data.date] = data;
                 alert('Firebase 클라우드에 성공적으로 저장되었습니다!');
                 switchTab('export');
             } catch (e) {
@@ -392,8 +401,8 @@
             
             const text = `[현장 일일 보고] (${data.date})
 - 근무형태: ${data.shift.shiftType} (${data.shift.workHours})
-- 근태 사유: ${leaveStr}
-- 행정 상태: 실적마감(${data.sheet}) / 재고관리(${data.stock})
+- 근태사유: ${leaveStr}
+- 행정상태: 실적마감(${data.sheet}) / 재고관리(${data.stock})
 - 장비 및 공정 이슈:
 ${data.issues || '특이사항 없음'}`;
 
@@ -407,7 +416,7 @@ ${data.issues || '특이사항 없음'}`;
         function exportExcel() {
             const data = getLogData();
             let leaveStr = Object.entries(data.leaves).map(([k,v]) => `${k}:${v}`).join('/');
-            const csvContent = "\uFEFF" + "날짜,근무조,근태내역,실적마감,재고관리,이슈내용\n" +
+            const csvContent = "\uFEFF" + "날짜,근무조,근태사유,실적마감,재고관리,이슈내용\n" +
                 `"${data.date}","${data.shift.shiftType}","${leaveStr}","${data.sheet}","${data.stock}","${data.issues.replace(/\n/g, ' ')}"`;
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
