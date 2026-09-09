@@ -19,7 +19,7 @@
 <body class="bg-slate-100 text-slate-800 pb-12 transition-all duration-300">
 
     <div id="app-container" class="max-w-xl mx-auto p-3 sm:p-6">
-        <!-- 헤더 및 디바이스(아이폰/PC) 전환 버튼 -->
+        <!-- 헤더 및 디바이스 전환 버튼 -->
         <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200/60">
             <div>
                 <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">🏭 Tandem Ops</h1>
@@ -35,7 +35,7 @@
             </div>
         </header>
 
-        <!-- 탭 메뉴 (5개로 분리) -->
+        <!-- 탭 메뉴 -->
         <div class="grid grid-cols-5 gap-1 mb-4 no-print text-center">
             <button onclick="switchTab('daily')" id="btn-daily" class="py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-sm transition">입력</button>
             <button onclick="switchTab('checklist')" id="btn-checklist" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">체크리스트</button>
@@ -44,7 +44,7 @@
             <button onclick="switchTab('export')" id="btn-export" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">공유</button>
         </div>
 
-        <!-- [PART 1] 일일 입력 섹션 (시작/종료일 오늘 날짜 자동 표기) -->
+        <!-- [PART 1] 일일 입력 섹션 -->
         <section id="tab-daily" class="space-y-4 no-print">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-4">
                 <div class="flex justify-between items-center">
@@ -111,9 +111,15 @@
                     </div>
                 </div>
 
+                <!-- 장비 및 공정 이슈 입력란 + 자동 템플릿 버튼 추가 -->
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">장비 및 공정 이슈 (오토 6 / 메인 8)</label>
-                    <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항..."></textarea>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">장비 및 공정 이슈 (LD -> Main -> ULD)</label>
+                        <button onclick="insertIssueTemplate()" class="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-[10px] rounded-lg border border-blue-200 transition flex items-center gap-1">
+                            ⚡ 이슈 템플릿 불러오기
+                        </button>
+                    </div>
+                    <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항... 위 템플릿 버튼을 눌러 활용하세요."></textarea>
                 </div>
 
                 <div class="flex gap-6 pt-1">
@@ -129,7 +135,7 @@
             </div>
         </section>
 
-        <!-- [PART 1.5] 독립된 체크리스트 탭 (웹앱 내 체크 및 요약 연동) -->
+        <!-- [PART 1.5] 독립된 체크리스트 탭 -->
         <section id="tab-checklist" class="hidden space-y-4">
             <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/60 space-y-6">
                 <div class="text-center border-b pb-4 space-y-1">
@@ -206,7 +212,7 @@
             </div>
         </section>
 
-        <!-- [PART 2] 캘린더 뷰 섹션 (상세 일지 수정 기능 포함) -->
+        <!-- [PART 2] 캘린더 뷰 섹션 -->
         <section id="tab-calendar" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
                 <div class="flex justify-between items-center">
@@ -222,7 +228,6 @@
                 <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
 
-            <!-- 선택한 날짜 상세 일지 및 수정 패널 -->
             <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
                     <span class="font-bold text-xs sm:text-sm text-slate-700">📌 선택한 날짜 상세 일지</span>
@@ -231,11 +236,9 @@
                         <button id="edit-day-btn" onclick="toggleEditMode()" class="hidden px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-200">수정</button>
                     </div>
                 </div>
-                <!-- 조회 모드 박스 -->
                 <div id="selected-day-detail" class="text-[11px] sm:text-xs text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-xl min-h-[60px] whitespace-pre-wrap leading-tight">
                     달력에서 날짜를 터치하면 해당 일의 상세 내용과 장비 이슈가 여기에 표시됩니다.
                 </div>
-                <!-- 수정 모드 패널 (숨김 상태) -->
                 <div id="selected-day-edit-box" class="hidden space-y-3 pt-2">
                     <div class="text-[11px] font-bold text-slate-500">근태 수정 (김진세/김장환/권의환/김현진):</div>
                     <div class="grid grid-cols-2 gap-2 text-xs">
@@ -260,7 +263,7 @@
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3">
                 <h2 class="font-bold text-sm sm:text-base text-slate-800">🔍 장비 및 공정 이슈 조회</h2>
                 <div>
-                    <input type="text" id="history-search" oninput="filterHistory()" placeholder="🔍 키워드 검색 (예: 제네레이터, T-04 등)..." class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
+                    <input type="text" id="history-search" oninput="filterHistory()" placeholder="🔍 키워드 검색 (예: T-01, T-04 등)..." class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
                 </div>
                 <div id="history-container" class="space-y-3">
                     <div class="p-4 text-center text-xs text-slate-400">데이터를 불러오는 중...</div>
@@ -268,7 +271,7 @@
             </div>
         </section>
 
-        <!-- [PART 4] 공유 섹션 (체크리스트 요약 내용 자동 포함) -->
+        <!-- [PART 4] 공유 섹션 -->
         <section id="tab-export" class="hidden space-y-4">
             <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-3 no-print">
                 <h2 class="font-bold text-sm sm:text-base text-slate-800">📤 외부 공유 및 리포트 추출</h2>
@@ -285,7 +288,6 @@
                 </div>
             </div>
 
-            <!-- 실시간 요약 미리보기 (체크리스트 체크 항목 요약 반영) -->
             <div id="print-area" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-2">
                 <h3 class="font-bold text-xs sm:text-sm text-slate-700 border-b pb-2">📋 실시간 요약 미리보기 (체크리스트 요약 포함)</h3>
                 <div id="preview-box" class="text-[11px] sm:text-xs text-slate-600 space-y-1 font-mono bg-slate-50 p-3.5 rounded-xl whitespace-pre-wrap leading-relaxed">
@@ -320,7 +322,7 @@
                 <div>☐ <b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 기술/공정 성과 데이터화 정리</div>
             </div>
 
-            <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 3. 일간 (Daily) 및 주·야간 교대 실무 체크리스트</h2>
+            <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 3. 일간 (Daily) 교대 실무 체크리스트</h2>
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
                 <div style="font-weight: bold; margin-bottom: 3px;">[출근 직후 / 근태 확인]</div>
                 <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 당일 휴무 신청자 현황 최종 확인 / 대근 불가 장비 공백 리스크 스캔</div>
@@ -363,7 +365,6 @@
     </script>
 
     <script>
-        // 오늘 날짜 자동 표기
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('log-start-date').value = todayStr;
         document.getElementById('log-end-date').value = todayStr;
@@ -375,7 +376,38 @@
         let checkedItems = [];
         let selectedDateForEdit = null;
 
-        // 모바일/PC 뷰 토글 기능
+        // 이슈 템플릿 자동 입력 함수
+        function insertIssueTemplate() {
+            const templateStr = `[오토메이션 (1~6호기)]
+- 1호기: 
+- 2호기: 
+- 3호기: 
+- 4호기: 
+- 5호기: 
+- 6호기: 
+
+[메인 공정 이슈 (LD -> Main -> ULD)]
+- T-01: LD( ) / Main( ) / ULD( )
+- T-03: LD( ) / Main( ) / ULD( )
+- T-03A: LD( ) / Main( ) / ULD( )
+- T-04 (T-03 ULD 연계): LD( ) -> T-04P -> UVW -> T-04S -> T-04I -> T-04A -> ULD( )
+- T-05: LD( ) / Main( ) / ULD( )
+- T-06: LD( ) / Main( ) / ULD( )
+- T-07: LD( ) / Main( ) / ULD( )
+- T-08: LD( ) / Main( ) / ULD( )
+
+[특이사항 및 인수인계]
+- `;
+            const textarea = document.getElementById('issue-text');
+            if(textarea.value.trim() !== '') {
+                if(confirm('기존에 작성 중인 내용이 있습니다. 템플릿으로 덮어쓰시겠습니까?')) {
+                    textarea.value = templateStr;
+                }
+            } else {
+                textarea.value = templateStr;
+            }
+        }
+
         let isPcMode = false;
         function toggleDeviceView() {
             isPcMode = !isPcMode;
@@ -392,7 +424,6 @@
             }
         }
 
-        // 체크리스트 항목 체크 및 요약 연동
         function toggleCheck(el, labelText) {
             if(el.innerText === '[ ]') {
                 el.innerText = '[✔]';
@@ -663,7 +694,6 @@
             const editBtn = document.getElementById('edit-day-btn');
             editBtn.classList.remove('hidden');
 
-            // 수정 패널 숨기기 및 기본 뷰 보이기
             detailBox.classList.remove('hidden');
             document.getElementById('selected-day-edit-box').classList.add('hidden');
             editBtn.innerText = "수정";
@@ -680,7 +710,6 @@
             detailBox.innerHTML = `[근무조] ${log.shift ? log.shift.shiftType + '조 (' + log.shift.workHours + ')' : '-'}<br>[근태내역] ${leaveStr}<br>[행정상태] 실적마감(${sheetText}) / 재고관리(${stockText})<br>[장비 이슈] ${log.issues ? log.issues.replace(/\n/g, ' / ') : '특이사항 없음'}`;
         }
 
-        // 캘린더 날짜 상세 일지 수정 모드 토글
         function toggleEditMode() {
             if(!selectedDateForEdit) return;
             const detailBox = document.getElementById('selected-day-detail');
@@ -693,7 +722,6 @@
                 detailBox.classList.add('hidden');
                 editBtn.innerText = "취소";
 
-                // 입력 필드에 기존 데이터 채우기
                 const leaves = log.leaves || {};
                 document.getElementById('edit-김진세').value = leaves["김진세"] || '정상근무';
                 document.getElementById('edit-김장환').value = leaves["김장환"] || '정상근무';
@@ -709,7 +737,6 @@
             }
         }
 
-        // 수정사항 저장
         async function saveDayEdit() {
             if(!selectedDateForEdit) return;
             const dateStr = selectedDateForEdit;
