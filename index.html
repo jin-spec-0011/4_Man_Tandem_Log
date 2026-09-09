@@ -111,7 +111,7 @@
                     </div>
                 </div>
 
-                <!-- 장비 및 공정 이슈 입력란 + 자동 템플릿 버튼 추가 -->
+                <!-- 장비 및 공정 이슈 입력란 + 자동 템플릿 버튼 -->
                 <div>
                     <div class="flex justify-between items-center mb-1.5">
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">장비 및 공정 이슈 (LD -> Main -> ULD)</label>
@@ -119,7 +119,7 @@
                             ⚡ 이슈 템플릿 불러오기
                         </button>
                     </div>
-                    <textarea id="issue-text" rows="8" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항... 위 템플릿 버튼을 눌러 활용하세요."></textarea>
+                    <textarea id="issue-text" rows="10" class="w-full p-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed" placeholder="[T-3 김진세] 특이사항... 위 템플릿 버튼을 눌러 활용하세요."></textarea>
                 </div>
 
                 <div class="flex gap-6 pt-1">
@@ -322,7 +322,7 @@
                 <div>☐ <b>W4 (넷째 주):</b> 월말 근태·교육 마감 확인 및 기술/공정 성과 데이터화 정리</div>
             </div>
 
-            <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 3. 일간 (Daily) 교대 실무 체크리스트</h2>
+            <h2 style="font-size: 12pt; color: #1e3a8a; border-left: 4px solid #1e3a8a; padding-left: 6px; margin: 12px 0 6px 0;">📅 3. 일간 (Daily) 및 주·야간 교대 실무 체크리스트</h2>
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 10pt;">
                 <div style="font-weight: bold; margin-bottom: 3px;">[출근 직후 / 근태 확인]</div>
                 <div style="margin-left: 15px; margin-bottom: 3px; color: #334155;">- 당일 휴무 신청자 현황 최종 확인 / 대근 불가 장비 공백 리스크 스캔</div>
@@ -376,7 +376,7 @@
         let checkedItems = [];
         let selectedDateForEdit = null;
 
-        // 이슈 템플릿 자동 입력 함수
+        // 요청하신 맞춤형 이슈 템플릿 삽입 함수
         function insertIssueTemplate() {
             const templateStr = `[오토메이션 (1~6호기)]
 - 1호기: 
@@ -390,17 +390,18 @@
 - T-01: LD( ) / Main( ) / ULD( )
 - T-03: LD( ) / Main( ) / ULD( )
 - T-03A: LD( ) / Main( ) / ULD( )
-- T-04 (T-03 ULD 연계): LD( ) -> T-04P -> UVW -> T-04S -> T-04I -> T-04A -> ULD( )
-- T-05: LD( ) / Main( ) / ULD( )
-- T-06: LD( ) / Main( ) / ULD( )
-- T-07: LD( ) / Main( ) / ULD( )
-- T-08: LD( ) / Main( ) / ULD( )
+- T-04 (T-03 ULD 연계): LD( )
+- T-04P :
+- UVW 
+- T-04S 
+- T-04I 
+- T-04A  Main( ) / ULD( )
 
 [특이사항 및 인수인계]
 - `;
             const textarea = document.getElementById('issue-text');
             if(textarea.value.trim() !== '') {
-                if(confirm('기존에 작성 중인 내용이 있습니다. 템플릿으로 덮어쓰시겠습니까?')) {
+                if(confirm('기존에 작성 중인 내용이 있습니다. 템플릿으로 덮어쓰기 하시겠습니까?')) {
                     textarea.value = templateStr;
                 }
             } else {
