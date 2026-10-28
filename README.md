@@ -42,7 +42,7 @@ GitHub Actions (매일 06:47 KST)          Firebase RTDB (pa/)            GitHub
    | 이름 | 값 |
    |---|---|
    | `ACCOUNTS_JSON` | 아래 형식 (한 줄로) |
-   | `FIREBASE_DB_URL` | `https://<프로젝트>-default-rtdb.asia-southeast1.firebasedatabase.app` |
+   | `FIREBASE_DB_URL` | `https://qcells-tandem-ops-default-rtdb.firebaseio.com` |
    | `FIREBASE_SA_JSON` | 서비스 계정 JSON 파일 내용 전체 |
    | `ANTHROPIC_API_KEY` | (선택) 지출·예약 추출 정밀도 향상. 미설정 시 규칙 기반 |
 
