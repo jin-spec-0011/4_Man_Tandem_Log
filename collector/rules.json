@@ -1,0 +1,40 @@
+{
+  "window_days": 3,
+  "interest_scan_days": 30,
+  "block_rule": {
+    "min_ad_mails": 3,
+    "max_read_rate": 0.1
+  },
+  "auto_trash_blocked": true,
+  "important_limit": 15,
+
+  "keep_senders": [
+    "shinhancard.com", "hyundaicard.com", "samsungcard.com", "kbcard.com",
+    "lottecard.co.kr", "bccard.com", "wooricard.com", "hanacard.co.kr", "nhcard.co.kr",
+    "kakaobank.com", "tossbank.com", "toss.im",
+    "accounts.google.com", "naver.com"
+  ],
+
+  "ad_subject_markers": ["(광고)", "[광고]", "(AD)", "[AD]", "(ad)"],
+  "promo_words": ["할인", "쿠폰", "이벤트", "특가", "세일", "혜택", "적립", "SALE", "sale", "% OFF", "무료배송", "신상품", "뉴스레터", "newsletter"],
+
+  "spend_subject_words": ["승인", "결제", "영수증", "주문완료", "주문 완료", "구매완료", "구매 완료", "출금", "이용내역", "payment", "receipt", "Receipt", "Payment", "invoice", "Invoice", "청구"],
+  "spend_amount_labels": ["승인금액", "결제금액", "총 결제금액", "최종 결제금액", "이용금액", "합계", "총액", "결제 금액", "청구금액", "출금금액", "Total", "TOTAL", "Amount", "amount"],
+  "cancel_words": ["취소", "환불", "cancel", "Cancel", "refund", "Refund"],
+
+  "reservation_subject_words": ["예약", "예매", "booking", "Booking", "reservation", "Reservation", "confirmation", "Confirmation", "체크인", "탑승", "항공권", "e-티켓", "e-ticket", "itinerary", "Itinerary"],
+  "place_labels": ["장소", "위치", "주소", "숙소", "호텔", "매장", "지점", "공연장", "출발", "Address", "Location", "Venue"],
+
+  "categories": {
+    "식비": ["배달의민족", "배민", "요기요", "쿠팡이츠", "스타벅스", "카페", "식당", "푸드", "베이커리", "맥도날드", "버거", "치킨", "편의점", "GS25", "CU", "세븐일레븐", "이마트24"],
+    "장보기": ["이마트", "홈플러스", "롯데마트", "코스트코", "마켓컬리", "컬리", "SSG", "오아시스"],
+    "쇼핑": ["쿠팡", "Coupang", "11번가", "G마켓", "옥션", "무신사", "네이버페이", "스마트스토어", "Amazon", "AliExpress", "알리", "테무", "올리브영", "다이소"],
+    "교통": ["카카오T", "카카오 T", "택시", "티머니", "코레일", "KTX", "SRT", "고속버스", "주유", "SK에너지", "GS칼텍스", "S-OIL", "현대오일뱅크", "하이패스", "주차"],
+    "여행/숙박": ["야놀자", "여기어때", "에어비앤비", "Airbnb", "Booking.com", "아고다", "Agoda", "호텔", "대한항공", "아시아나", "제주항공", "진에어", "티웨이", "항공"],
+    "구독": ["넷플릭스", "Netflix", "유튜브", "YouTube", "Spotify", "멜론", "디즈니", "티빙", "쿠팡와우", "Apple", "iCloud", "Google One", "Anthropic", "Claude", "OpenAI", "GitHub", "Notion"],
+    "통신": ["SKT", "SK텔레콤", "KT", "LG유플러스", "U+", "알뜰폰"],
+    "공구/EDC": ["Wera", "Knipex", "베라", "크니펙스", "공구", "툴"],
+    "의료": ["병원", "약국", "의원", "치과", "한의원"],
+    "공과금": ["관리비", "전기", "가스", "수도", "한국전력", "도시가스", "세금", "국세", "지방세"]
+  }
+}

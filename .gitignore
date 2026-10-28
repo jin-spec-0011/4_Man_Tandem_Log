@@ -1,0 +1,8 @@
+# 개인 데이터·자격증명은 절대 커밋 금지 (공개 레포)
+collector/out.json
+*.env
+.env*
+*service-account*.json
+*-firebase-adminsdk-*.json
+__pycache__/
+.DS_Store
