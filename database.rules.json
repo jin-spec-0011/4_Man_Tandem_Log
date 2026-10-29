@@ -3,8 +3,8 @@
     ".read": false,
     ".write": false,
     "pa": {
-      ".read": "auth != null && auth.uid === 'REPLACE_WITH_YOUR_UID'",
-      ".write": "auth != null && auth.uid === 'REPLACE_WITH_YOUR_UID'"
+      ".read": "auth != null && auth.uid === 'SGl0LqJwzLPoiFN7xRQ3JTQ5X3n2'",
+      ".write": "auth != null && auth.uid === 'SGl0LqJwzLPoiFN7xRQ3JTQ5X3n2'"
     }
   }
 }
