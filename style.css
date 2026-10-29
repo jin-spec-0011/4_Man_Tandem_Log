@@ -36,6 +36,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+html { background: var(--bg); }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--sans);
   font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased;
@@ -55,10 +56,19 @@ a { color: var(--accent); }
 .topbar {
   position: sticky; top: 0; z-index: 5;
   display: flex; justify-content: space-between; align-items: center;
-  padding: calc(10px + var(--safe-t)) 16px 10px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  padding: calc(10px + var(--safe-t)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  /* 불투명 배경: iOS 상태바 영역으로 콘텐츠가 비쳐 블러/겹침 보이는 현상 방지 */
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
+}
+/* 홈 화면 앱(standalone, black-translucent): 상태바 높이 확보. env()가 0으로 오는 기기 대비 최소 44px */
+@media (display-mode: standalone) {
+  .topbar { padding-top: calc(10px + max(var(--safe-t), 44px)); }
+}
+/* 상태바 뒤 고무줄 스크롤(overscroll) 시에도 콘텐츠가 비치지 않도록 상단 고정 차폐막 */
+body::before {
+  content: ""; position: fixed; left: 0; right: 0; top: 0; height: var(--safe-t);
+  background: var(--bg); z-index: 20; pointer-events: none;
 }
 .brand { display: flex; gap: 10px; align-items: center; min-width: 0; }
 .brand h1 { font-size: 17px; font-weight: 800; }
@@ -118,6 +128,7 @@ main { max-width: 760px; margin: 0 auto; padding: 14px 16px 24px; }
 .h { font-size: 14px; font-weight: 800; margin: 22px 0 8px; display: flex; align-items: baseline; gap: 8px; }
 .row-between { display: flex; justify-content: space-between; align-items: center; }
 .row-between .h { margin-bottom: 8px; }
+.row-between .btn.small { margin-top: 14px; flex: none; }
 .row-end { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* Accounts */
@@ -174,6 +185,7 @@ main { max-width: 760px; margin: 0 auto; padding: 14px 16px 24px; }
 .chip { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 5px; margin-left: 4px; vertical-align: 1px; }
 .chip.dup { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 .chip.manual { background: var(--panel-2); color: var(--ink-2); }
+.chip.merged { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
 
 /* Reservations */
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--panel-2); border-radius: 10px; padding: 3px; margin-bottom: 12px; }

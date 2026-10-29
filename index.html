@@ -83,7 +83,10 @@
       <div class="kpis" id="spendKpis"></div>
       <h3 class="h">항목별</h3>
       <div class="bars" id="spendCats"></div>
-      <h3 class="h">상세 <span class="muted small">항목 탭하여 분류 수정 · 중복은 제외 처리</span></h3>
+      <div class="row-between">
+        <h3 class="h">상세 <span class="muted small">탭하여 분류 수정 · 중복 자동 병합</span></h3>
+        <button class="btn small" id="dupToggle" type="button" hidden></button>
+      </div>
       <div id="spendList"></div>
     </section>
 
@@ -123,7 +126,8 @@
     <form method="dialog" class="stack">
       <h3 id="catTitle">분류 변경</h3>
       <select id="catSelect"></select>
-      <label class="check"><input type="checkbox" id="catExclude"> 합계에서 제외 (중복·이체 등)</label>
+      <label class="check"><input type="checkbox" id="catExclude"> 합계에서 제외 (이체·환불 대기 등)</label>
+      <label class="check"><input type="checkbox" id="catNotDup"> 중복 아님 (자동 병합 해제)</label>
       <div class="row-end">
         <button class="btn" value="cancel">취소</button>
         <button class="btn primary" value="ok" id="catSave">저장</button>

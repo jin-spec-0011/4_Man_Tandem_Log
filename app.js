@@ -22,6 +22,59 @@
   const lsGet = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } };
 
+  // ───────── spend dedupe ─────────
+  // 같은 결제가 여러 계정(구글2·네이버)·여러 알림으로 들어오는 경우 하나만 집계.
+  // 동일 판정: 같은 날짜 + 같은 통화 + 같은 금액(부호 포함) + 시각 차 ≤ DUP_WINDOW_MIN분 (시각 없으면 가맹점 동일)
+  // '중복 아님'(notDup) 또는 '합계 제외'(excluded) 항목은 병합 대상에서 빠짐.
+  const DUP_WINDOW_MIN = 10;
+  const normMerchant = (s) => String(s || "").toLowerCase()
+    .replace(/\(주\)|주식회사|㈜|\(유\)/g, "")
+    .replace(/[^0-9a-z\u3131-\u318e\uac00-\ud7a3]/g, "");
+  const toMin = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(t || ""); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const amtKey = (x) => Math.round((Number(x.amount) || 0) * 100);
+
+  // 시각이 둘 다 있으면 시각 차로만 판정(같은 가맹점 하루 2회 결제는 별건 유지), 없으면 가맹점명으로 판정
+  function sameTxn(a, b) {
+    const ta = toMin(a.time), tb = toMin(b.time);
+    if (ta !== null && tb !== null) return Math.abs(ta - tb) <= DUP_WINDOW_MIN;
+    const ma = normMerchant(a.merchant), mb = normMerchant(b.merchant);
+    return !!ma && ma === mb;
+  }
+
+  // 반환: 전체 항목 배열. 대표 항목에 dups(병합된 key 배열), 중복 항목에 dupOf(대표 key) 부여.
+  function dedupeSpend(obj) {
+    const all = Object.entries(obj || {})
+      .filter(([, v]) => v && typeof v === "object")
+      .map(([key, v]) => ({ key, ...v, dups: [], dupOf: null }));
+    const buckets = {};
+    all.forEach((x) => {
+      if (x.excluded || x.notDup || !x.date) return;
+      const b = `${x.date}|${x.currency || "KRW"}|${amtKey(x)}`;
+      (buckets[b] = buckets[b] || []).push(x);
+    });
+    Object.values(buckets).forEach((items) => {
+      if (items.length < 2) return;
+      items.sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99") || a.key.localeCompare(b.key));
+      const clusters = [];
+      items.forEach((x) => {
+        const c = clusters.find((cl) => cl.some((y) => sameTxn(x, y)));
+        if (c) c.push(x); else clusters.push([x]);
+      });
+      clusters.forEach((cl) => {
+        if (cl.length < 2) return;
+        const primary = cl.find((y) => y.manual) || cl[0];
+        cl.forEach((y) => {
+          if (y === primary) return;
+          y.dupOf = primary.key;
+          primary.dups.push(y.key);
+        });
+      });
+    });
+    return all;
+  }
+
+  const uniqActiveKRW = (list) => list.filter((x) => !x.excluded && !x.dupOf && (x.currency || "KRW") === "KRW");
+
   let toastTimer;
   function toast(msg) {
     const t = $("#toast");
@@ -44,6 +97,8 @@
     reservations: {},
     spend: {},
     spendPrev: {},
+    spendByMonth: {},
+    showDup: false,
     refs: [],
     spendRefs: [],
   };
@@ -224,9 +279,31 @@
     S.spend = {}; S.spendPrev = {};
     const cur = db.ref(`pa/spend/${S.month}`);
     const prev = db.ref(`pa/spend/${addMonths(S.month, -1)}`);
-    const h1 = cur.on("value", (s) => { S.spend = s.val() || {}; renderSpend(); }, (e) => toast(e.code || e.message));
+    const h1 = cur.on("value", (s) => { S.spend = s.val() || {}; S.spendByMonth[S.month] = S.spend; renderSpend(); renderToday(); }, (e) => toast(e.code || e.message));
     const h2 = prev.on("value", (s) => { S.spendPrev = s.val() || {}; renderSpend(); }, () => {});
     S.spendRefs.push(() => cur.off("value", h1), () => prev.off("value", h2));
+  }
+
+  // 오늘 탭 지출 = 지출 원장(중복 제거) 기준. 다른 달이면 1회 조회 후 캐시.
+  const spendLoading = {};
+  async function ensureSpendMonth(m) {
+    if (S.spendByMonth[m] !== undefined || spendLoading[m]) return;
+    spendLoading[m] = true;
+    try {
+      const snap = await db.ref(`pa/spend/${m}`).once("value");
+      S.spendByMonth[m] = snap.val() || {};
+    } catch { /* 실패 시 수집기 일별 값으로 대체 */ }
+    spendLoading[m] = false;
+    renderToday();
+  }
+
+  function daySpendByAccount(day) {
+    const m = S.spendByMonth[day.slice(0, 7)];
+    if (m === undefined) return null;
+    const out = {};
+    uniqActiveKRW(dedupeSpend(m)).filter((x) => x.date === day)
+      .forEach((x) => { const a = x.account || "-"; out[a] = (out[a] || 0) + (Number(x.amount) || 0); });
+    return out;
   }
 
   async function ensureDay(day) {
@@ -293,6 +370,9 @@
     $("#dayPick").value = S.day;
     const d = S.daily[S.day] || {};
     const t = dayTotals(d);
+    if (auth.currentUser) ensureSpendMonth(S.day.slice(0, 7));
+    const ds = daySpendByAccount(S.day);
+    if (ds) t.spend = Object.values(ds).reduce((s, v) => s + v, 0);
     const bulkPct = t.total ? Math.round((t.bulk / t.total) * 100) : 0;
     const isToday = S.day === todayKST();
     $("#dayKpis").innerHTML = [
@@ -309,7 +389,7 @@
       const err = runAcc[id] && runAcc[id].ok === false ? `<span class="err-chip" title="${esc(runAcc[id].error)}">수집 실패</span>` : "";
       return `<div class="acc"><div class="t"><span>${esc(label(id))}</span>${err}</div>
         <div class="m"><div>수신<b>${a.total || 0}</b></div><div>미열람<b>${a.unread || 0}</b></div>
-        <div>광고<b>${a.bulk || 0}</b></div><div>지출<b>${won(a.spend)}</b></div></div></div>`;
+        <div>광고<b>${a.bulk || 0}</b></div><div>지출<b>${won(ds ? ds[id] || 0 : a.spend)}</b></div></div></div>`;
     }).join("") : `<div class="acc muted">계정 데이터 없음</div>`;
 
     const imp = [];
@@ -352,16 +432,14 @@
   $("#monthPick").addEventListener("change", (e) => { if (e.target.value) { S.month = e.target.value; attachSpend(); renderSpend(); } });
   $$("[data-month]").forEach((b) => b.addEventListener("click", () => { S.month = addMonths(S.month, Number(b.dataset.month)); attachSpend(); renderSpend(); }));
 
-  const activeKRW = (obj) => Object.entries(obj || {}).map(([key, v]) => ({ key, ...v }))
-    .filter((x) => !x.excluded && (x.currency || "KRW") === "KRW");
-
   function renderSpend() {
     $("#monthPick").value = S.month;
-    const all = Object.entries(S.spend).map(([key, v]) => ({ key, ...v }));
-    const act = activeKRW(S.spend);
+    const all = dedupeSpend(S.spend);
+    const act = uniqActiveKRW(all);
+    const dupTotal = all.filter((x) => x.dupOf).length;
     const total = act.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-    const prevTotal = activeKRW(S.spendPrev).reduce((s, x) => s + (Number(x.amount) || 0), 0);
-    const usdTotal = all.filter((x) => !x.excluded && x.currency === "USD").reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    const prevTotal = uniqActiveKRW(dedupeSpend(S.spendPrev)).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    const usdTotal = all.filter((x) => !x.excluded && !x.dupOf && x.currency === "USD").reduce((s, x) => s + (Number(x.amount) || 0), 0);
     const curMonth = todayKST().slice(0, 7);
     const [y, m] = S.month.split("-").map(Number);
     const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -374,7 +452,7 @@
     }
     $("#spendKpis").innerHTML = [
       kpi("월 합계", `₩${won(total)}`, deltaTxt, deltaCls),
-      kpi("건수", act.length, `제외 ${all.filter((x) => x.excluded).length}건`),
+      kpi("건수", act.length, `중복 ${dupTotal} · 제외 ${all.filter((x) => x.excluded).length}건`),
       kpi("일평균", elapsed ? `₩${won(total / elapsed)}` : "-", elapsed ? `${elapsed}일 기준` : "미래 월"),
       kpi("해외(USD)", usdTotal ? `$${usd(usdTotal)}` : "-", "원화 합계 미포함"),
     ].join("");
@@ -388,28 +466,37 @@
        <span class="v">₩${won(v)}<small>${total > 0 ? Math.round((v / total) * 100) : 0}%</small></span></div>`).join("")
       : `<p class="muted small" style="padding:10px 0;margin:0">이 달 지출 데이터 없음</p>`;
 
-    const dupKey = (x) => `${x.date}|${Math.abs(Number(x.amount) || 0)}`;
-    const dupCount = {};
-    act.forEach((x) => (dupCount[dupKey(x)] = (dupCount[dupKey(x)] || 0) + 1));
+    const dupBtn = $("#dupToggle");
+    dupBtn.hidden = dupTotal === 0;
+    dupBtn.textContent = S.showDup ? `중복 ${dupTotal}건 숨기기` : `중복 ${dupTotal}건 보기`;
+    const shown = S.showDup ? all : all.filter((x) => !x.dupOf);
     const byDate = {};
-    all.forEach((x) => (byDate[x.date] = byDate[x.date] || []).push(x));
+    shown.forEach((x) => (byDate[x.date || "-"] = byDate[x.date || "-"] || []).push(x));
     const dates = Object.keys(byDate).sort().reverse();
+    if (!dates.length) { $("#spendList").innerHTML = ""; return; }
     $("#spendList").innerHTML = dates.map((dte) => {
-      const items = byDate[dte].sort((a, b) => (b.time || "").localeCompare(a.time || ""));
-      const sum = items.filter((x) => !x.excluded && (x.currency || "KRW") === "KRW").reduce((s, x) => s + (Number(x.amount) || 0), 0);
+      const items = byDate[dte].sort((a, b) => (b.time || "").localeCompare(a.time || "") || (a.dupOf ? 1 : 0) - (b.dupOf ? 1 : 0));
+      const sum = uniqActiveKRW(items).reduce((s, x) => s + (Number(x.amount) || 0), 0);
       return `<div class="dgroup"><div class="dhead"><span>${dte.slice(5).replace("-", "/")} (${wd(dte)})</span><span class="num">₩${won(sum)}</span></div>
         ${items.map((x) => {
           const amt = Number(x.amount) || 0;
           const cur = x.currency === "USD" ? `$${usd(amt)}` : `₩${won(amt)}`;
-          const dup = !x.excluded && dupCount[dupKey(x)] > 1 ? `<span class="chip dup">중복 의심</span>` : "";
+          const accs = x.dups.length
+            ? Array.from(new Set([x.account, ...x.dups.map((k) => (S.spend[k] || {}).account)].filter(Boolean))).map(label).join("·")
+            : "";
+          const dup = x.dupOf
+            ? `<span class="chip dup">중복·숨김</span>`
+            : x.dups.length ? `<span class="chip merged" title="${esc(accs)}">${x.dups.length + 1}건 병합</span>` : "";
           const man = x.manual ? `<span class="chip manual">수정</span>` : "";
-          return `<div class="item${x.excluded ? " excluded" : ""}" data-k="${esc(x.key)}">
+          return `<div class="item${x.excluded || x.dupOf ? " excluded" : ""}" data-k="${esc(x.key)}">
             <span class="s">${esc(x.merchant || x.from || "-")}${dup}${man}</span><span class="amt num${amt < 0 ? " neg" : ""}">${cur}</span>
-            <span class="f"><span class="tag">${esc(x.category || "기타")}</span>${esc(x.time || "")} · ${esc(label(x.account))} · ${esc(x.subject || "")}</span><span></span></div>`;
+            <span class="f"><span class="tag">${esc(x.category || "기타")}</span>${esc(x.time || "")} · ${esc(accs || label(x.account))} · ${esc(x.subject || "")}</span><span></span></div>`;
         }).join("")}</div>`;
     }).join("");
     $$("#spendList .item").forEach((el) => el.addEventListener("click", () => openCat(el.dataset.k)));
   }
+
+  $("#dupToggle").addEventListener("click", () => { S.showDup = !S.showDup; renderSpend(); });
 
   let editKey = null;
   function openCat(key) {
@@ -420,6 +507,7 @@
     $("#catTitle").textContent = `${x.merchant || x.from} · ${x.currency === "USD" ? "$" + usd(x.amount) : "₩" + won(x.amount)}`;
     $("#catSelect").innerHTML = cats.map((c) => `<option ${c === (x.category || "기타") ? "selected" : ""}>${esc(c)}</option>`).join("");
     $("#catExclude").checked = !!x.excluded;
+    $("#catNotDup").checked = !!x.notDup;
     const dlg = $("#catDialog");
     if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
   }
@@ -427,7 +515,12 @@
     const dlg = $("#catDialog");
     if (dlg.returnValue !== "ok" || !editKey) return;
     const base = `spend/${S.month}/${editKey}`;
-    write({ [`${base}/category`]: $("#catSelect").value, [`${base}/manual`]: true, [`${base}/excluded`]: $("#catExclude").checked }, "저장됨");
+    write({
+      [`${base}/category`]: $("#catSelect").value,
+      [`${base}/manual`]: true,
+      [`${base}/excluded`]: $("#catExclude").checked,
+      [`${base}/notDup`]: $("#catNotDup").checked,
+    }, "저장됨");
     editKey = null;
   });
 

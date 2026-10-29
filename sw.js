@@ -1,5 +1,5 @@
 // App-shell 캐시. 데이터(Firebase)는 SDK가 직접 처리하므로 캐시하지 않음.
-const CACHE = "mailops-v3";
+const CACHE = "mailops-v4";
 const SHELL = ["./", "index.html", "style.css", "app.js", "config.js", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
