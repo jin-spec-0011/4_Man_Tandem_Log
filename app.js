@@ -84,6 +84,68 @@
     $("#loginErr").textContent = map[e.code] || e.message || String(e);
   };
 
+  // iOS 홈 화면 앱(standalone): 팝업·리다이렉트 결과가 앱으로 돌아오지 않음 → Google 로그인 숨김
+  const isStandalone =
+    window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  if (isStandalone) {
+    $("#googleLogin").hidden = true;
+    $("#loginDivider").hidden = true;
+    $("#standaloneHint").hidden = false;
+  }
+
+  const hasPassword = (user) => !!user && user.providerData.some((p) => p.providerId === "password");
+
+  // Google 계정에 이메일/비밀번호 자격 연결 → 같은 UID로 홈 화면 앱 로그인 가능
+  async function linkPassword() {
+    const user = auth.currentUser;
+    if (!user) return;
+    if (hasPassword(user)) { toast("이미 비밀번호가 연결되어 있습니다."); return; }
+    if (!user.email) { toast("계정 이메일을 확인할 수 없습니다."); return; }
+    const pw = window.prompt(`${user.email}\n홈 화면 앱용 비밀번호 (8자 이상)`);
+    if (pw === null) return;
+    if (pw.length < 8) { toast("8자 이상 입력하세요."); return; }
+    const pw2 = window.prompt("비밀번호 확인");
+    if (pw2 === null) return;
+    if (pw !== pw2) { toast("비밀번호가 일치하지 않습니다."); return; }
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, pw);
+    const done = () => { toast("연결 완료 — 홈 화면 앱에서 이메일로 로그인하세요."); updatePwBtn(auth.currentUser); };
+    try {
+      await user.linkWithCredential(cred);
+      done();
+    } catch (e) {
+      if (e.code === "auth/requires-recent-login") {
+        try {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          provider.setCustomParameters({ login_hint: user.email });
+          await user.reauthenticateWithPopup(provider);
+          await user.linkWithCredential(cred);
+          done();
+        } catch (e2) { toast(linkErrMsg(e2)); }
+      } else {
+        toast(linkErrMsg(e));
+      }
+    }
+  }
+
+  function linkErrMsg(e) {
+    const map = {
+      "auth/provider-already-linked": "이미 비밀번호가 연결되어 있습니다.",
+      "auth/operation-not-allowed": "Firebase 콘솔 → Authentication → 이메일/비밀번호 로그인을 사용 설정하세요.",
+      "auth/weak-password": "비밀번호가 너무 약합니다.",
+      "auth/email-already-in-use": "같은 이메일의 별도 계정이 존재합니다. Firebase 콘솔 Users에서 해당 이메일/비밀번호 계정을 삭제 후 재시도하세요.",
+      "auth/credential-already-in-use": "같은 이메일의 별도 계정이 존재합니다. Firebase 콘솔 Users에서 해당 이메일/비밀번호 계정을 삭제 후 재시도하세요.",
+      "auth/popup-blocked": "팝업이 차단되었습니다. 다시 로그인 후 바로 시도하세요.",
+      "auth/network-request-failed": "네트워크 오류",
+    };
+    return map[e.code] || e.message || String(e);
+  }
+
+  function updatePwBtn(user) {
+    $("#pwLinkBtn").hidden = !user || isStandalone || hasPassword(user);
+  }
+
+  $("#pwLinkBtn").addEventListener("click", () => { linkPassword().catch((e) => toast(linkErrMsg(e))); });
+
   $("#googleLogin").addEventListener("click", async () => {
     $("#loginErr").textContent = "";
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -98,7 +160,7 @@
       }
     }
   });
-  auth.getRedirectResult().catch(authErr);
+  if (!isStandalone) auth.getRedirectResult().catch(authErr);
 
   $("#emailLogin").addEventListener("submit", (ev) => {
     ev.preventDefault();
@@ -121,6 +183,7 @@
   auth.onAuthStateChanged((user) => {
     detachAll();
     $("#logoutBtn").hidden = !user;
+    updatePwBtn(user);
     if (!user) {
       $("#runInfo").textContent = "로그인 필요";
       showOnly("#loginView");

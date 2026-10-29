@@ -26,6 +26,7 @@
     </div>
     <div class="top-actions">
       <a class="icon-btn" id="runNow" target="_blank" rel="noopener" title="지금 수집 (GitHub Actions)">↻</a>
+      <button class="icon-btn" id="pwLinkBtn" title="홈 화면 앱용 비밀번호 설정" hidden>🔑</button>
       <button class="icon-btn" id="logoutBtn" title="로그아웃" hidden>⎋</button>
     </div>
   </header>
@@ -35,8 +36,9 @@
     <section id="loginView" class="panel center" hidden>
       <h2>로그인</h2>
       <p class="muted">본인 계정만 데이터에 접근할 수 있습니다.</p>
+      <p class="muted" id="standaloneHint" hidden>홈 화면 앱에서는 Google 로그인이 iOS 제약으로 동작하지 않습니다.<br>Safari에서 Google 로그인 → 상단 🔑 로 비밀번호를 연결한 뒤, 여기서 같은 Gmail 주소와 그 비밀번호로 로그인하세요.</p>
       <button class="btn primary wide" id="googleLogin">Google로 로그인</button>
-      <div class="divider"><span>또는 이메일</span></div>
+      <div class="divider" id="loginDivider"><span>또는 이메일</span></div>
       <form id="emailLogin" class="stack">
         <input type="email" id="loginEmail" placeholder="이메일" autocomplete="username" required>
         <input type="password" id="loginPw" placeholder="비밀번호" autocomplete="current-password" minlength="6" required>
