@@ -26,6 +26,7 @@ import imaplib
 import json
 import os
 import re
+import unicodedata
 import sys
 import time
 import traceback
@@ -287,12 +288,14 @@ def parse_spend(subj, body, sender_name, cls: Classifier):
 
 
 DATE_PATTERNS = [
-    (re.compile(r"(20\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})"), "ymd"),
-    (re.compile(r"(?<![\d.])(\d{1,2})\s*월\s*(\d{1,2})\s*일"), "md"),
+    (re.compile(r"(20\d{2})\s*[.\-/년年]\s*(\d{1,2})\s*[.\-/월月]\s*(\d{1,2})"), "ymd"),
+    (re.compile(r"(?<![\d.])(\d{1,2})\s*[월月]\s*(\d{1,2})\s*[일日]"), "md"),
     (re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s+(20\d{2})"), "mdy_en"),
     (re.compile(r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+(20\d{2})"), "dmy_en"),
 ]
 TIME_RE = re.compile(r"(?:(오전|오후|AM|PM|am|pm)\s*)?(\d{1,2}):(\d{2})(?:\s*(AM|PM|am|pm))?")
+# "15時30分", "午後3時", "오후 3시 30분", "10時半" (時間/시간 = 소요시간은 제외)
+TIME_CJK_RE = re.compile(r"(오전|오후|午前|午後)?\s*(\d{1,2})\s*[時시](?![間간])\s*(?:(\d{1,2})\s*[分분]|([半반]))?")
 PLACE_RE_TMPL = r"(?:{labels})\s*[:：]?\s*([^\n]{{2,60}})"
 
 
@@ -320,14 +323,21 @@ def find_dates(text: str, received: dt.date):
 
 
 def parse_time_near(text: str, pos: int) -> str | None:
-    m = TIME_RE.search(text[pos:pos + 40])
-    if not m:
+    seg = text[pos:pos + 40]
+    m = TIME_RE.search(seg)
+    mc = TIME_CJK_RE.search(seg)
+    if mc and (not m or mc.start() < m.start()):
+        hh = int(mc.group(2))
+        mm = int(mc.group(3)) if mc.group(3) else (30 if mc.group(4) else 0)
+        ap = (mc.group(1) or "").lower()
+    elif m:
+        hh, mm = int(m.group(2)), int(m.group(3))
+        ap = (m.group(1) or m.group(4) or "").lower()
+    else:
         return None
-    hh, mm = int(m.group(2)), int(m.group(3))
-    ap = (m.group(1) or m.group(4) or "").lower()
-    if ap in ("오후", "pm") and hh < 12:
+    if ap in ("오후", "午後", "pm") and hh < 12:
         hh += 12
-    if ap in ("오전", "am") and hh == 12:
+    if ap in ("오전", "午前", "am") and hh == 12:
         hh = 0
     if hh > 23 or mm > 59:
         return None
@@ -335,7 +345,9 @@ def parse_time_near(text: str, pos: int) -> str | None:
 
 
 def parse_reservation(subj, body, sender_name, received: dt.date, cls: Classifier):
-    text = subj + "\n" + body[:8000]
+    # 전각 숫자/콜론(２０２６年１１月３日 １５：００) → 반각 정규화
+    body = unicodedata.normalize("NFKC", body)
+    text = unicodedata.normalize("NFKC", subj) + "\n" + body[:8000]
     dates = find_dates(text, received)
     if not dates:
         return None
