@@ -551,8 +551,14 @@
           <div class="f">${esc(r.vendor || "")}${r.place ? " · " + esc(r.place) : ""} · ${esc(label(r.account))}${r.status === "canceled" ? " · 취소됨" : ""}</div>
           <div class="acts"><button class="linkish" data-hide="${esc(r.k)}">숨기기</button></div></div>`).join("")}</div></div>`;
     }).join("") : `<p class="muted" style="text-align:center;padding:30px 0">${S.resFilter === "past" ? "지난 예약 없음" : "예정된 예약 없음"}</p>`;
-    $$("#resList [data-hide]").forEach((b) => b.addEventListener("click", () =>
-      write({ [`reservations/${b.dataset.hide}/hidden`]: true }, "숨김 처리")));
+    $$("#resList [data-hide]").forEach((b) => b.addEventListener("click", () => {
+      const r = S.reservations[b.dataset.hide];
+      if (!r) return;
+      const when = `${r.eventDate || ""}${r.eventTime ? " " + r.eventTime : ""}`;
+      const msg = `이 예약을 숨길까요?\n\n${r.title || "(제목 없음)"}\n${when}${r.vendor ? " · " + r.vendor : ""}\n\n※ 현재 앱에서는 숨긴 예약을 다시 볼 수 없습니다.`;
+      if (!confirm(msg)) return;
+      write({ [`reservations/${b.dataset.hide}/hidden`]: true }, "숨김 처리");
+    }));
   }
 
   // ───────── BLOCK ─────────
