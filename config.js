@@ -10,6 +10,6 @@ window.PA_CONFIG = {
     messagingSenderId: "909705800417",
     appId: "1:909705800417:web:1d20fff5bb8a566ce0e5a0"
   },
-  // 대시보드 상단 '지금 수집' 버튼이 여는 GitHub Actions 페이지
+  // 대시보드 상단 '지금 수집' 버튼이 여는 GitHub Actions 페이지 (Run workflow 로 수동 실행)
   actionsUrl: "https://github.com/jin-spec-0011/4_Man_Tandem_Log/actions/workflows/daily.yml"
 };

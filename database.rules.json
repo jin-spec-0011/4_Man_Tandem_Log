@@ -2,9 +2,15 @@
   "rules": {
     ".read": false,
     ".write": false,
-    "pa": {
+    "mail": {
       ".read": "auth != null && auth.uid === 'SGl0LqJwzLPoiFN7xRQ3JTQ5X3n2'",
-      ".write": "auth != null && auth.uid === 'SGl0LqJwzLPoiFN7xRQ3JTQ5X3n2'"
+      ".write": "auth != null && auth.uid === 'SGl0LqJwzLPoiFN7xRQ3JTQ5X3n2'",
+      "reservations": { ".indexOn": ["eventDate"] },
+      "retention": {
+        "$rid": {
+          ".validate": "newData.hasChildren(['kind', 'path', 'actionAt']) && (newData.child('kind').val() === 'hidden' || newData.child('kind').val() === 'blocked') && newData.child('path').val().matches(/^(daily|spend|reservations|adSenders)\\/[A-Za-z0-9_\\-\\/]{1,190}$/)"
+        }
+      }
     }
   }
 }

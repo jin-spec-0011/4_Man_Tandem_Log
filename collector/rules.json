@@ -5,14 +5,22 @@
     "min_ad_mails": 3,
     "max_read_rate": 0.1
   },
-  "auto_trash_blocked": true,
-  "important_limit": 15,
+  "daily_item_limit": 40,
+  "daily_ad_item_limit": 20,
+  "trash_limit_per_sender": 500,
+
+  "accounts": {
+    "g1": { "label": "Gmail 메인", "kind": "gmail", "token_env": "GMAIL1_REFRESH_TOKEN" },
+    "g2": { "label": "Gmail 서브", "kind": "gmail", "token_env": "GMAIL2_REFRESH_TOKEN" },
+    "nv": { "label": "Naver", "kind": "imap", "host": "imap.naver.com", "user_env": "NAVER_IMAP_USER", "pass_env": "NAVER_IMAP_PASSWORD" }
+  },
+  "notify_account": "g1",
 
   "keep_senders": [
     "shinhancard.com", "hyundaicard.com", "samsungcard.com", "kbcard.com",
     "lottecard.co.kr", "bccard.com", "wooricard.com", "hanacard.co.kr", "nhcard.co.kr",
     "kakaobank.com", "tossbank.com", "toss.im",
-    "accounts.google.com", "naver.com"
+    "accounts.google.com", "naver.com", "github.com"
   ],
 
   "ad_subject_markers": ["(광고)", "[광고]", "(AD)", "[AD]", "(ad)"],

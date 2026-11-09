@@ -6,9 +6,11 @@
   <meta name="theme-color" content="#0f1419" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f4f5f2" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Mail Ops">
-  <title>Mail Ops</title>
+  <meta name="apple-mobile-web-app-title" content="Mail Desk">
+  <meta name="description" content="Gmail 2계정 + 네이버 메일 개인 대시보드">
+  <title>Mail Desk</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -20,26 +22,31 @@
     <div class="brand">
       <span class="dot" id="runDot" title="수집 상태"></span>
       <div>
-        <h1>Mail Ops</h1>
+        <h1>Mail Desk</h1>
         <p class="sub" id="runInfo">-</p>
       </div>
     </div>
     <div class="top-actions">
-      <a class="icon-btn" id="runNow" target="_blank" rel="noopener" title="지금 수집 (GitHub Actions)">↻</a>
-      <button class="icon-btn" id="pwLinkBtn" title="홈 화면 앱용 비밀번호 설정" hidden>🔑</button>
-      <button class="icon-btn" id="logoutBtn" title="로그아웃" hidden>⎋</button>
+      <a class="icon-btn" id="runNow" target="_blank" rel="noopener" title="지금 수집 (GitHub Actions)" aria-label="지금 수집">↻</a>
+      <button class="icon-btn" id="pwLinkBtn" type="button" title="홈 화면 앱용 비밀번호 설정" aria-label="비밀번호 설정" hidden>🔑</button>
+      <button class="icon-btn" id="logoutBtn" type="button" title="로그아웃" aria-label="로그아웃" hidden>⎋</button>
     </div>
   </header>
+
+  <div class="banner" id="expBanner" role="alert" hidden>
+    <span id="expText"></span>
+    <button class="btn small" type="button" id="expGo">보관함</button>
+  </div>
 
   <main id="view">
     <!-- 로그인 -->
     <section id="loginView" class="panel center" hidden>
       <h2>로그인</h2>
-      <p class="muted">본인 계정만 데이터에 접근할 수 있습니다.</p>
-      <p class="muted" id="standaloneHint" hidden>홈 화면 앱에서는 Google 로그인이 iOS 제약으로 동작하지 않습니다.<br>Safari에서 Google 로그인 → 상단 🔑 로 비밀번호를 연결한 뒤, 여기서 같은 Gmail 주소와 그 비밀번호로 로그인하세요.</p>
-      <button class="btn primary wide" id="googleLogin">Google로 로그인</button>
+      <p class="muted">본인 계정(UID)만 데이터에 접근할 수 있습니다.</p>
+      <p class="muted small" id="standaloneHint" hidden>홈 화면 앱에서는 iOS 제약으로 Google 로그인이 동작하지 않습니다.<br>Safari에서 Google 로그인 → 상단 🔑 로 비밀번호 연결 → 여기서 같은 Gmail 주소와 그 비밀번호로 로그인하세요.</p>
+      <button class="btn primary wide" type="button" id="googleLogin">Google로 로그인</button>
       <div class="divider" id="loginDivider"><span>또는 이메일</span></div>
-      <form id="emailLogin" class="stack">
+      <form id="emailLogin" class="stack" novalidate>
         <input type="email" id="loginEmail" placeholder="이메일" autocomplete="username" required>
         <input type="password" id="loginPw" placeholder="비밀번호" autocomplete="current-password" minlength="6" required>
         <button class="btn wide" type="submit">이메일로 로그인</button>
@@ -50,87 +57,104 @@
     <!-- 권한 없음 -->
     <section id="deniedView" class="panel center" hidden>
       <h2>접근 권한 없음</h2>
-      <p class="muted">database.rules.json 의 UID를 아래 값으로 교체 후 규칙을 배포하세요.</p>
+      <p class="muted">database.rules.json 의 UID를 아래 값으로 교체 후 규칙을 게시하세요.</p>
       <code class="uid" id="myUid"></code>
-      <button class="btn wide" id="copyUid">UID 복사</button>
+      <button class="btn wide" type="button" id="copyUid">UID 복사</button>
     </section>
 
-    <!-- 오늘 -->
-    <section id="tab-today" class="tab" hidden>
+    <!-- 일별 정리 -->
+    <section id="tab-daily" class="tab" hidden>
       <div class="navrow">
-        <button class="icon-btn" data-day="-1" aria-label="이전 날">‹</button>
-        <input type="date" id="dayPick">
-        <button class="icon-btn" data-day="1" aria-label="다음 날">›</button>
+        <button class="icon-btn" type="button" data-day="-1" aria-label="이전 날">‹</button>
+        <input type="date" id="dayPick" aria-label="날짜">
+        <button class="icon-btn" type="button" data-day="1" aria-label="다음 날">›</button>
       </div>
       <div class="kpis" id="dayKpis"></div>
-      <h3 class="h">계정별</h3>
-      <div class="acc-grid" id="dayAccounts"></div>
-      <h3 class="h">미열람 주요 메일 <span class="muted small">광고 제외</span></h3>
-      <ul class="list" id="dayImportant"></ul>
-      <h3 class="h">다가오는 예약 <span class="muted small">7일</span></h3>
-      <ul class="list" id="dayUpcoming"></ul>
+      <div class="seg seg4" id="dayFilter" role="tablist">
+        <button type="button" data-f="all" class="on">전체</button>
+        <button type="button" data-f="unread">미열람</button>
+        <button type="button" data-f="key">지출·예약</button>
+        <button type="button" data-f="ad">광고</button>
+      </div>
+      <div id="dayList"></div>
       <h3 class="h">14일 추이 <span class="legend"><i class="sw sw-a"></i>일반 <i class="sw sw-b"></i>광고</span></h3>
       <div class="trend" id="dayTrend"></div>
     </section>
 
-    <!-- 지출 -->
+    <!-- 월별 지출 -->
     <section id="tab-spend" class="tab" hidden>
       <div class="navrow">
-        <button class="icon-btn" data-month="-1" aria-label="이전 달">‹</button>
-        <input type="month" id="monthPick">
-        <button class="icon-btn" data-month="1" aria-label="다음 달">›</button>
+        <button class="icon-btn" type="button" data-month="-1" aria-label="이전 달">‹</button>
+        <input type="month" id="monthPick" aria-label="월">
+        <button class="icon-btn" type="button" data-month="1" aria-label="다음 달">›</button>
       </div>
       <div class="kpis" id="spendKpis"></div>
       <h3 class="h">항목별</h3>
       <div class="bars" id="spendCats"></div>
       <div class="row-between">
-        <h3 class="h">상세 <span class="muted small">탭하여 분류 수정 · 중복 자동 병합</span></h3>
+        <h3 class="h">상세 <span class="muted small">탭하여 분류 수정·숨김 · 중복 자동 병합</span></h3>
         <button class="btn small" id="dupToggle" type="button" hidden></button>
       </div>
       <div id="spendList"></div>
     </section>
 
-    <!-- 예약 -->
+    <!-- 예약 일자별 -->
     <section id="tab-res" class="tab" hidden>
       <div class="seg" id="resFilter">
-        <button data-f="upcoming" class="on">예정</button>
-        <button data-f="past">지난</button>
-        <button data-f="all">전체</button>
+        <button type="button" data-f="upcoming" class="on">예정</button>
+        <button type="button" data-f="past">지난</button>
+        <button type="button" data-f="all">전체</button>
       </div>
       <div id="resList"></div>
     </section>
 
-    <!-- 차단 -->
+    <!-- 광고 차단 요청 -->
     <section id="tab-block" class="tab" hidden>
       <p class="muted small rule" id="blockRule"></p>
       <div class="row-between">
         <h3 class="h">차단 요청 <span class="count" id="blockCount">0</span></h3>
-        <button class="btn small" id="approveAll" hidden>전체 승인</button>
+        <button class="btn small" type="button" id="blockAll" hidden>전체 차단</button>
       </div>
       <div id="blockPending"></div>
-      <h3 class="h">처리 완료</h3>
-      <div id="blockDone"></div>
+      <h3 class="h">차단 중</h3>
+      <div id="blockActive"></div>
+    </section>
+
+    <!-- 보관함 (숨김·차단) -->
+    <section id="tab-vault" class="tab" hidden>
+      <p class="muted small rule" id="vaultRule"></p>
+      <div class="seg" id="vaultFilter">
+        <button type="button" data-f="all" class="on">전체</button>
+        <button type="button" data-f="hidden">숨김</button>
+        <button type="button" data-f="blocked">차단</button>
+      </div>
+      <div id="vaultList"></div>
     </section>
   </main>
 
   <nav class="tabbar" id="tabbar" hidden>
-    <button data-tab="today" class="on"><span>◉</span>오늘</button>
-    <button data-tab="spend"><span>₩</span>지출</button>
-    <button data-tab="res"><span>▦</span>예약</button>
-    <button data-tab="block"><span>⊘</span>차단<b class="badge" id="blockBadge" hidden></b></button>
+    <button type="button" data-tab="daily" class="on"><span>◉</span>일별</button>
+    <button type="button" data-tab="spend"><span>₩</span>지출</button>
+    <button type="button" data-tab="res"><span>▦</span>예약</button>
+    <button type="button" data-tab="block"><span>⊘</span>차단<b class="badge" id="blockBadge" hidden></b></button>
+    <button type="button" data-tab="vault"><span>▤</span>보관함<b class="badge" id="vaultBadge" hidden></b></button>
   </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <dialog id="catDialog">
+  <dialog id="spendDialog">
     <form method="dialog" class="stack">
-      <h3 id="catTitle">분류 변경</h3>
-      <select id="catSelect"></select>
-      <label class="check"><input type="checkbox" id="catExclude"> 합계에서 제외 (이체·환불 대기 등)</label>
-      <label class="check"><input type="checkbox" id="catNotDup"> 중복 아님 (자동 병합 해제)</label>
-      <div class="row-end">
-        <button class="btn" value="cancel">취소</button>
-        <button class="btn primary" value="ok" id="catSave">저장</button>
+      <h3 id="spTitle">지출 항목</h3>
+      <p class="muted small" id="spMeta"></p>
+      <select id="spCat" aria-label="분류"></select>
+      <label class="check"><input type="checkbox" id="spExclude"> 합계에서 제외 (이체·환불 대기 등)</label>
+      <label class="check"><input type="checkbox" id="spNotDup"> 중복 아님 (자동 병합 해제)</label>
+      <div class="row-between">
+        <button class="btn" type="button" id="spHide">숨기기</button>
+        <div class="row-end">
+          <button class="btn" value="cancel">취소</button>
+          <button class="btn primary" value="ok">저장</button>
+        </div>
       </div>
     </form>
   </dialog>

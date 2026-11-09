@@ -1,7 +1,7 @@
 {
-  "name": "Mail Ops — 개인 메일 대시보드",
-  "short_name": "Mail Ops",
-  "start_url": "./#today",
+  "name": "Mail Desk — 개인 메일 대시보드",
+  "short_name": "Mail Desk",
+  "start_url": "./#daily",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f1419",
