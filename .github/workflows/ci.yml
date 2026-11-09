@@ -29,7 +29,7 @@ jobs:
         run: python -m pytest -q tests
 
       - name: Python syntax (tools)
-        run: python -m py_compile tools/gmail_oauth.py
+        run: python -m py_compile tools/gmail_oauth.py tools/verify_credentials.py
 
       - uses: actions/setup-node@v5
         with:

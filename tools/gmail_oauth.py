@@ -121,6 +121,9 @@ def main() -> int:
         return 1
     if SCOPE not in tok.get("scope", ""):
         print(f"경고: 허용 범위에 gmail.modify 없음 (받은 범위: {tok.get('scope')})", file=sys.stderr)
+    if "refresh_token_expires_in" in tok:
+        print(f"경고: 만료 기한이 있는 토큰(약 {int(tok['refresh_token_expires_in']) // 86400}일) — "
+              "동의 화면이 '테스트' 상태일 수 있음. '프로덕션' 게시 후 재발급 권장", file=sys.stderr)
     print("\n=== refresh token (GitHub Secret 에 그대로 저장, 외부 노출 금지) ===\n" + rt + "\n")
     return 0
 
