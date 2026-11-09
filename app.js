@@ -1,50 +1,64 @@
 (() => {
   "use strict";
 
+  // ───────── constants (collector/retention.py · rules.json 과 동일 값 유지) ─────────
   const CFG = window.PA_CONFIG || {};
+  const ROOT = "mail";
+  const RETAIN_DAYS = 180;
+  const WARN_DAYS = 7;
+  const BLOCK_RULE = { days: 30, min: 3, maxRate: 0.1 };
   const DEFAULT_CATS = ["식비", "장보기", "쇼핑", "교통", "여행/숙박", "구독", "통신", "공구/EDC", "의료", "공과금", "기타"];
-  const BLOCK_RULE = { days: 30, min: 3, maxRate: 0.1 }; // collector/rules.json 과 동일하게 유지
+  const DAY_MS = 86400000;
 
   // ───────── helpers ─────────
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const won = (n) => Math.round(Number(n) || 0).toLocaleString("ko-KR");
-  const usd = (n) => (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fx = (n) => (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const fmtKST = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" });
   const todayKST = () => fmtKST.format(new Date());
   const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-  const addMonths = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 7); };
+  const addMonths = (ym, n) => { const [y, m] = ym.split("-").map(Number); return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); };
   const WD = ["일", "월", "화", "수", "목", "금", "토"];
   const wd = (iso) => WD[new Date(iso + "T00:00:00Z").getUTCDay()];
-  const dayDiff = (a, b) => Math.round((new Date(b + "T00:00:00Z") - new Date(a + "T00:00:00Z")) / 86400000);
+  const dayDiff = (a, b) => Math.round((new Date(b + "T00:00:00Z") - new Date(a + "T00:00:00Z")) / DAY_MS);
   const isHttps = (u) => typeof u === "string" && /^https:\/\//i.test(u);
+  const isMailto = (u) => typeof u === "string" && /^mailto:/i.test(u);
+  const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "");
+  const isMonth = (s) => /^\d{4}-\d{2}$/.test(s || "");
   const lsGet = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } };
+  const obj = (v) => (v && typeof v === "object" ? v : {});
+  const KEY_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+  // ───────── retention (collector/retention.py 와 동일 규칙) ─────────
+  const pathToRid = (p) => p.replace(/^\/+|\/+$/g, "").split("/").join("~");
+  const PATH_RE = /^(daily|spend|reservations|adSenders)\/[A-Za-z0-9_\-/]{1,190}$/;
+  const expiresOf = (iso) => new Date(new Date(iso).getTime() + RETAIN_DAYS * DAY_MS);
+  function daysLeft(iso, now = Date.now()) {
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return 0;
+    return Math.max(0, Math.ceil((t + RETAIN_DAYS * DAY_MS - now) / DAY_MS));
+  }
+  const isWarn = (e) => e && daysLeft(e.actionAt) <= WARN_DAYS;
 
   // ───────── spend dedupe ─────────
-  // 같은 결제가 여러 계정(구글2·네이버)·여러 알림으로 들어오는 경우 하나만 집계.
-  // 동일 판정: 같은 날짜 + 같은 통화 + 같은 금액(부호 포함) + 시각 차 ≤ DUP_WINDOW_MIN분 (시각 없으면 가맹점 동일)
-  // '중복 아님'(notDup) 또는 '합계 제외'(excluded) 항목은 병합 대상에서 빠짐.
+  // 같은 결제가 여러 계정·여러 알림으로 중복 수신 → 하나만 집계.
+  // 동일 판정: 같은 날짜·통화·금액 + 시각 차 ≤ 10분 (시각 없으면 가맹점명 동일). notDup/excluded/hidden 제외
   const DUP_WINDOW_MIN = 10;
-  const normMerchant = (s) => String(s || "").toLowerCase()
-    .replace(/\(주\)|주식회사|㈜|\(유\)/g, "")
-    .replace(/[^0-9a-z\u3131-\u318e\uac00-\ud7a3]/g, "");
+  const normMerchant = (s) => String(s || "").toLowerCase().replace(/\(주\)|주식회사|㈜|\(유\)/g, "").replace(/[^0-9a-zㄱ-ㆎ가-힣]/g, "");
   const toMin = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(t || ""); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
   const amtKey = (x) => Math.round((Number(x.amount) || 0) * 100);
-
-  // 시각이 둘 다 있으면 시각 차로만 판정(같은 가맹점 하루 2회 결제는 별건 유지), 없으면 가맹점명으로 판정
   function sameTxn(a, b) {
     const ta = toMin(a.time), tb = toMin(b.time);
     if (ta !== null && tb !== null) return Math.abs(ta - tb) <= DUP_WINDOW_MIN;
     const ma = normMerchant(a.merchant), mb = normMerchant(b.merchant);
     return !!ma && ma === mb;
   }
-
-  // 반환: 전체 항목 배열. 대표 항목에 dups(병합된 key 배열), 중복 항목에 dupOf(대표 key) 부여.
-  function dedupeSpend(obj) {
-    const all = Object.entries(obj || {})
-      .filter(([, v]) => v && typeof v === "object")
+  function dedupeSpend(o) {
+    const all = Object.entries(obj(o))
+      .filter(([, v]) => v && typeof v === "object" && !v.hidden)
       .map(([key, v]) => ({ key, ...v, dups: [], dupOf: null }));
     const buckets = {};
     all.forEach((x) => {
@@ -63,17 +77,12 @@
       clusters.forEach((cl) => {
         if (cl.length < 2) return;
         const primary = cl.find((y) => y.manual) || cl[0];
-        cl.forEach((y) => {
-          if (y === primary) return;
-          y.dupOf = primary.key;
-          primary.dups.push(y.key);
-        });
+        cl.forEach((y) => { if (y !== primary) { y.dupOf = primary.key; primary.dups.push(y.key); } });
       });
     });
     return all;
   }
-
-  const uniqActiveKRW = (list) => list.filter((x) => !x.excluded && !x.dupOf && (x.currency || "KRW") === "KRW");
+  const activeKRW = (list) => list.filter((x) => !x.excluded && !x.dupOf && (x.currency || "KRW") === "KRW");
 
   let toastTimer;
   function toast(msg) {
@@ -81,38 +90,43 @@
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
   }
 
   // ───────── state ─────────
+  const TABS = ["daily", "spend", "res", "block", "vault"];
   const S = {
-    tab: "today",
+    tab: TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : lsGet("md.tab", "daily"),
     day: todayKST(),
     month: todayKST().slice(0, 7),
+    dayFilter: "all",
     resFilter: "upcoming",
+    vaultFilter: "all",
+    showDup: false,
     lastRun: null,
     accounts: {},
-    daily: {},
-    candidates: {},
-    reservations: {},
+    dailyRange: {},
     spend: {},
     spendPrev: {},
-    spendByMonth: {},
-    showDup: false,
+    reservations: {},
+    adSenders: {},
+    retention: {},
     refs: [],
+    dayRef: null,
     spendRefs: [],
   };
+  if (!TABS.includes(S.tab)) S.tab = "daily";
 
   // ───────── boot ─────────
   const cfgOk = CFG.firebase && CFG.firebase.apiKey && !String(CFG.firebase.apiKey).includes("REPLACE_ME");
-  if (CFG.actionsUrl) $("#runNow").href = CFG.actionsUrl; else $("#runNow").hidden = true;
+  if (isHttps(CFG.actionsUrl)) $("#runNow").href = CFG.actionsUrl; else $("#runNow").hidden = true;
 
   if (!cfgOk || typeof firebase === "undefined") {
     $("#runInfo").textContent = "설정 필요";
     const v = $("#loginView");
     v.hidden = false;
     v.innerHTML = `<h2>설정 필요</h2><p class="muted">${typeof firebase === "undefined"
-      ? "Firebase SDK 로드 실패 (네트워크 확인)"
+      ? "Firebase SDK 로드 실패 (네트워크 확인 후 새로고침)"
       : "config.js 에 Firebase 웹 앱 구성값을 입력하세요."}</p>`;
     return;
   }
@@ -121,37 +135,148 @@
   const auth = firebase.auth();
   const db = firebase.database();
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+  const ref = (p = "") => db.ref(p ? `${ROOT}/${p}` : ROOT);
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   }
 
-  // ───────── auth ─────────
-  const authErr = (e) => {
-    const map = {
-      "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않습니다.",
-      "auth/wrong-password": "비밀번호가 올바르지 않습니다.",
-      "auth/user-not-found": "등록되지 않은 계정입니다.",
-      "auth/too-many-requests": "시도 횟수 초과. 잠시 후 다시 시도하세요.",
-      "auth/unauthorized-domain": "Firebase Auth 승인 도메인에 현재 도메인을 추가하세요.",
-      "auth/network-request-failed": "네트워크 오류",
-    };
-    $("#loginErr").textContent = map[e.code] || e.message || String(e);
-  };
+  // ───────── write helpers ─────────
+  async function write(updates, okMsg) {
+    try {
+      await ref().update(updates);
+      if (okMsg) toast(okMsg);
+      return true;
+    } catch (e) {
+      toast(e && e.code === "PERMISSION_DENIED" ? "권한 없음 — 보안 규칙의 UID를 확인하세요." : `저장 실패: ${e.message || e}`);
+      return false;
+    }
+  }
 
-  // iOS 홈 화면 앱(standalone): 팝업·리다이렉트 결과가 앱으로 돌아오지 않음 → Google 로그인 숨김
-  const isStandalone =
-    window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  function retentionEntry(kind, path, label, at) {
+    return { kind, path, label: String(label || path).slice(0, 80), actionAt: at, expiresAt: expiresOf(at).toISOString(), warnedAt: null };
+  }
+
+  function hideItem(path, label) {
+    if (!PATH_RE.test(path)) { toast("잘못된 경로"); return Promise.resolve(false); }
+    const at = new Date().toISOString();
+    return write({
+      [`${path}/hidden`]: true,
+      [`${path}/hiddenAt`]: at,
+      [`retention/${pathToRid(path)}`]: retentionEntry("hidden", path, label, at),
+    }, `숨김 — ${RETAIN_DAYS}일 후 자동 삭제 (보관함에서 복원 가능)`);
+  }
+
+  function restoreEntry(rid) {
+    const e = S.retention[rid];
+    if (!e || !PATH_RE.test(e.path || "")) return Promise.resolve(false);
+    const u = { [`retention/${rid}`]: null };
+    if (e.path.startsWith("adSenders/")) {
+      u[`${e.path}/status`] = "pending";
+      u[`${e.path}/blockedAt`] = null;
+      u[`${e.path}/hiddenAt`] = null;
+      u[`${e.path}/unsub`] = null;
+    } else {
+      u[`${e.path}/hidden`] = null;
+      u[`${e.path}/hiddenAt`] = null;
+    }
+    const msg = e.kind === "blocked"
+      ? "차단 해제 — 이미 휴지통으로 옮긴 메일은 메일함 휴지통에서 직접 복구하세요."
+      : "복원 완료";
+    return write(u, msg);
+  }
+
+  function extendEntry(rid) {
+    const e = S.retention[rid];
+    if (!e || !PATH_RE.test(e.path || "")) return Promise.resolve(false);
+    const at = new Date().toISOString();
+    const field = e.kind === "blocked" ? "blockedAt" : "hiddenAt";
+    return write({
+      [`retention/${rid}/actionAt`]: at,
+      [`retention/${rid}/expiresAt`]: expiresOf(at).toISOString(),
+      [`retention/${rid}/warnedAt`]: null,
+      [`${e.path}/${field}`]: at,
+    }, `${RETAIN_DAYS}일 연장 — 만료 ${fmtKST.format(expiresOf(at))}`);
+  }
+
+  function blockSender(key) {
+    const s = S.adSenders[key];
+    if (!s || !KEY_RE.test(key)) return Promise.resolve(false);
+    const at = new Date().toISOString();
+    const path = `adSenders/${key}`;
+    return write({
+      [`${path}/status`]: "blocked",
+      [`${path}/blockedAt`]: at,
+      [`retention/${pathToRid(path)}`]: retentionEntry("blocked", path, s.name || s.sender, at),
+    });
+  }
+
+  function dismissSender(key) {
+    const s = S.adSenders[key];
+    if (!s || !KEY_RE.test(key)) return Promise.resolve(false);
+    const at = new Date().toISOString();
+    const path = `adSenders/${key}`;
+    return write({
+      [`${path}/status`]: "dismissed",
+      [`${path}/hiddenAt`]: at,
+      [`retention/${pathToRid(path)}`]: retentionEntry("hidden", path, s.name || s.sender, at),
+    }, "유지 — 차단 요청 목록에서 숨김 (보관함에서 복원 가능)");
+  }
+
+  // ───────── auth ─────────
+  const authErrMap = {
+    "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않습니다.",
+    "auth/invalid-email": "이메일 형식이 올바르지 않습니다.",
+    "auth/wrong-password": "비밀번호가 올바르지 않습니다.",
+    "auth/user-not-found": "등록되지 않은 계정입니다.",
+    "auth/too-many-requests": "시도 횟수 초과. 잠시 후 다시 시도하세요.",
+    "auth/unauthorized-domain": "Firebase Auth 승인 도메인에 현재 도메인을 추가하세요.",
+    "auth/network-request-failed": "네트워크 오류",
+    "auth/popup-closed-by-user": "로그인 창이 닫혔습니다.",
+    "auth/popup-blocked": "팝업이 차단되었습니다.",
+    "auth/provider-already-linked": "이미 비밀번호가 연결되어 있습니다.",
+    "auth/operation-not-allowed": "Firebase 콘솔 → Authentication → 이메일/비밀번호 로그인을 사용 설정하세요.",
+    "auth/weak-password": "비밀번호가 너무 약합니다.",
+    "auth/email-already-in-use": "같은 이메일의 별도 계정이 존재합니다. Firebase 콘솔 Users에서 삭제 후 재시도하세요.",
+    "auth/credential-already-in-use": "같은 이메일의 별도 계정이 존재합니다. Firebase 콘솔 Users에서 삭제 후 재시도하세요.",
+  };
+  const authMsg = (e) => authErrMap[e && e.code] || (e && e.message) || String(e);
+
+  const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
   if (isStandalone) {
     $("#googleLogin").hidden = true;
     $("#loginDivider").hidden = true;
     $("#standaloneHint").hidden = false;
   }
+  const hasPassword = (u) => !!u && u.providerData.some((p) => p.providerId === "password");
+  const updatePwBtn = (u) => { $("#pwLinkBtn").hidden = !u || isStandalone || hasPassword(u); };
 
-  const hasPassword = (user) => !!user && user.providerData.some((p) => p.providerId === "password");
+  $("#googleLogin").addEventListener("click", async () => {
+    $("#loginErr").textContent = "";
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+      await auth.signInWithPopup(provider);
+    } catch (e) {
+      if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") {
+        try { await auth.signInWithRedirect(provider); } catch (e2) { $("#loginErr").textContent = authMsg(e2); }
+      } else {
+        $("#loginErr").textContent = authMsg(e);
+      }
+    }
+  });
 
-  // Google 계정에 이메일/비밀번호 자격 연결 → 같은 UID로 홈 화면 앱 로그인 가능
-  async function linkPassword() {
+  $("#emailLogin").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    $("#loginErr").textContent = "";
+    const email = $("#loginEmail").value.trim();
+    const pw = $("#loginPw").value;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("#loginErr").textContent = "이메일 형식이 올바르지 않습니다."; return; }
+    if (pw.length < 6) { $("#loginErr").textContent = "비밀번호는 6자 이상입니다."; return; }
+    try { await auth.signInWithEmailAndPassword(email, pw); } catch (e) { $("#loginErr").textContent = authMsg(e); }
+  });
+
+  $("#pwLinkBtn").addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user) return;
     if (hasPassword(user)) { toast("이미 비밀번호가 연결되어 있습니다."); return; }
@@ -168,473 +293,467 @@
       await user.linkWithCredential(cred);
       done();
     } catch (e) {
-      if (e.code === "auth/requires-recent-login") {
-        try {
-          const provider = new firebase.auth.GoogleAuthProvider();
-          provider.setCustomParameters({ login_hint: user.email });
-          await user.reauthenticateWithPopup(provider);
-          await user.linkWithCredential(cred);
-          done();
-        } catch (e2) { toast(linkErrMsg(e2)); }
-      } else {
-        toast(linkErrMsg(e));
-      }
-    }
-  }
-
-  function linkErrMsg(e) {
-    const map = {
-      "auth/provider-already-linked": "이미 비밀번호가 연결되어 있습니다.",
-      "auth/operation-not-allowed": "Firebase 콘솔 → Authentication → 이메일/비밀번호 로그인을 사용 설정하세요.",
-      "auth/weak-password": "비밀번호가 너무 약합니다.",
-      "auth/email-already-in-use": "같은 이메일의 별도 계정이 존재합니다. Firebase 콘솔 Users에서 해당 이메일/비밀번호 계정을 삭제 후 재시도하세요.",
-      "auth/credential-already-in-use": "같은 이메일의 별도 계정이 존재합니다. Firebase 콘솔 Users에서 해당 이메일/비밀번호 계정을 삭제 후 재시도하세요.",
-      "auth/popup-blocked": "팝업이 차단되었습니다. 다시 로그인 후 바로 시도하세요.",
-      "auth/network-request-failed": "네트워크 오류",
-    };
-    return map[e.code] || e.message || String(e);
-  }
-
-  function updatePwBtn(user) {
-    $("#pwLinkBtn").hidden = !user || isStandalone || hasPassword(user);
-  }
-
-  $("#pwLinkBtn").addEventListener("click", () => { linkPassword().catch((e) => toast(linkErrMsg(e))); });
-
-  $("#googleLogin").addEventListener("click", async () => {
-    $("#loginErr").textContent = "";
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    try {
-      await auth.signInWithPopup(provider);
-    } catch (e) {
-      if (["auth/popup-blocked", "auth/operation-not-supported-in-this-environment", "auth/cancelled-popup-request"].includes(e.code)) {
-        auth.signInWithRedirect(provider).catch(authErr);
-      } else if (e.code !== "auth/popup-closed-by-user") {
-        authErr(e);
-      }
+      if (e.code !== "auth/requires-recent-login") { toast(authMsg(e)); return; }
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ login_hint: user.email });
+        await user.reauthenticateWithPopup(provider);
+        await user.linkWithCredential(cred);
+        done();
+      } catch (e2) { toast(authMsg(e2)); }
     }
   });
-  if (!isStandalone) auth.getRedirectResult().catch(authErr);
 
-  $("#emailLogin").addEventListener("submit", (ev) => {
-    ev.preventDefault();
-    $("#loginErr").textContent = "";
-    auth.signInWithEmailAndPassword($("#loginEmail").value.trim(), $("#loginPw").value).catch(authErr);
-  });
-
-  $("#logoutBtn").addEventListener("click", () => auth.signOut());
+  $("#logoutBtn").addEventListener("click", () => auth.signOut().catch((e) => toast(authMsg(e))));
   $("#copyUid").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText($("#myUid").textContent); toast("UID 복사됨"); }
-    catch { toast("복사 실패 — 직접 선택해 복사하세요"); }
+    const uid = $("#myUid").textContent;
+    try { await navigator.clipboard.writeText(uid); toast("UID 복사됨"); }
+    catch {
+      const r = document.createRange(); r.selectNodeContents($("#myUid"));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      toast("길게 눌러 복사하세요");
+    }
   });
 
   function showOnly(id) {
-    ["#loginView", "#deniedView"].forEach((s) => ($(s).hidden = s !== id));
-    $$(".tab").forEach((t) => (t.hidden = true));
+    ["loginView", "deniedView"].forEach((v) => { $("#" + v).hidden = v !== id; });
+    $$(".tab").forEach((t) => { t.hidden = true; });
     $("#tabbar").hidden = id !== null;
+    if (id !== null) $("#expBanner").hidden = true;
   }
 
-  auth.onAuthStateChanged((user) => {
-    detachAll();
+  function detach() {
+    S.refs.forEach((r) => r.off());
+    S.refs = [];
+    if (S.dayRef) { S.dayRef.off(); S.dayRef = null; }
+    S.spendRefs.forEach((r) => r.off());
+    S.spendRefs = [];
+  }
+
+  auth.getRedirectResult().catch((e) => { $("#loginErr").textContent = authMsg(e); });
+
+  auth.onAuthStateChanged(async (user) => {
+    detach();
     $("#logoutBtn").hidden = !user;
     updatePwBtn(user);
     if (!user) {
+      showOnly("loginView");
       $("#runInfo").textContent = "로그인 필요";
-      showOnly("#loginView");
+      $("#runDot").className = "dot";
       return;
     }
-    db.ref("pa/meta").once("value")
-      .then(() => { showOnly(null); attach(); switchTab(initialTab()); })
-      .catch((e) => {
-        $("#runInfo").textContent = "권한 없음";
+    try {
+      await ref("meta").limitToFirst(1).once("value");
+    } catch (e) {
+      if (e && e.code === "PERMISSION_DENIED") {
         $("#myUid").textContent = user.uid;
-        showOnly("#deniedView");
-        console.warn(e);
-      });
+        showOnly("deniedView");
+        $("#runInfo").textContent = "권한 없음";
+        return;
+      }
+      toast(`연결 오류: ${e.message || e}`);
+    }
+    showOnly(null);
+    attach();
+    switchTab(S.tab);
   });
 
-  // ───────── data subscriptions ─────────
-  function on(ref, cb) {
-    const h = ref.on("value", (snap) => cb(snap.val() || {}), (e) => toast(`읽기 오류: ${e.code || e.message}`));
-    S.refs.push(() => ref.off("value", h));
-  }
-
-  function detachAll() {
-    S.refs.forEach((f) => f()); S.refs = [];
-    S.spendRefs.forEach((f) => f()); S.spendRefs = [];
+  // ───────── subscriptions ─────────
+  function sub(path, fn, query) {
+    const r = query ? query(ref(path)) : ref(path);
+    r.on("value", (snap) => fn(snap.val()), (e) => toast(`${path} 읽기 실패: ${e.code || e.message}`));
+    S.refs.push(r);
   }
 
   function attach() {
-    on(db.ref("pa/meta/lastRun"), (v) => { S.lastRun = v; renderRun(); renderToday(); });
-    on(db.ref("pa/accounts"), (v) => { S.accounts = v; renderToday(); });
-    on(db.ref("pa/daily").orderByKey().limitToLast(60), (v) => { S.daily = { ...S.daily, ...v }; renderToday(); });
-    on(db.ref("pa/blockCandidates"), (v) => { S.candidates = v; renderBlock(); });
-    on(db.ref("pa/reservations"), (v) => { S.reservations = v; renderRes(); renderToday(); });
+    sub("meta/lastRun", (v) => { S.lastRun = v; renderRun(); });
+    sub("accounts", (v) => { S.accounts = obj(v); renderRun(); renderDaily(); });
+    sub("reservations", (v) => { S.reservations = obj(v); renderRes(); renderDaily(); });
+    sub("adSenders", (v) => { S.adSenders = obj(v); renderBlock(); });
+    sub("retention", (v) => { S.retention = obj(v); renderVault(); renderBanner(); });
+    attachDay();
     attachSpend();
   }
 
+  function attachDay() {
+    if (S.dayRef) S.dayRef.off();
+    const start = addDays(S.day, -13);
+    S.dayRef = ref("daily").orderByKey().startAt(start).endAt(S.day);
+    S.dayRef.on("value", (snap) => { S.dailyRange = obj(snap.val()); renderDaily(); },
+      (e) => toast(`일별 읽기 실패: ${e.code || e.message}`));
+  }
+
   function attachSpend() {
-    S.spendRefs.forEach((f) => f()); S.spendRefs = [];
-    S.spend = {}; S.spendPrev = {};
-    const cur = db.ref(`pa/spend/${S.month}`);
-    const prev = db.ref(`pa/spend/${addMonths(S.month, -1)}`);
-    const h1 = cur.on("value", (s) => { S.spend = s.val() || {}; S.spendByMonth[S.month] = S.spend; renderSpend(); renderToday(); }, (e) => toast(e.code || e.message));
-    const h2 = prev.on("value", (s) => { S.spendPrev = s.val() || {}; renderSpend(); }, () => {});
-    S.spendRefs.push(() => cur.off("value", h1), () => prev.off("value", h2));
-  }
-
-  // 오늘 탭 지출 = 지출 원장(중복 제거) 기준. 다른 달이면 1회 조회 후 캐시.
-  const spendLoading = {};
-  async function ensureSpendMonth(m) {
-    if (S.spendByMonth[m] !== undefined || spendLoading[m]) return;
-    spendLoading[m] = true;
-    try {
-      const snap = await db.ref(`pa/spend/${m}`).once("value");
-      S.spendByMonth[m] = snap.val() || {};
-    } catch { /* 실패 시 수집기 일별 값으로 대체 */ }
-    spendLoading[m] = false;
-    renderToday();
-  }
-
-  function daySpendByAccount(day) {
-    const m = S.spendByMonth[day.slice(0, 7)];
-    if (m === undefined) return null;
-    const out = {};
-    uniqActiveKRW(dedupeSpend(m)).filter((x) => x.date === day)
-      .forEach((x) => { const a = x.account || "-"; out[a] = (out[a] || 0) + (Number(x.amount) || 0); });
-    return out;
-  }
-
-  async function ensureDay(day) {
-    if (S.daily[day] !== undefined) return;
-    try {
-      const snap = await db.ref(`pa/daily/${day}`).once("value");
-      S.daily[day] = snap.val() || null;
-    } catch { S.daily[day] = null; }
-    renderToday();
-  }
-
-  async function write(updates, okMsg) {
-    try { await db.ref("pa").update(updates); if (okMsg) toast(okMsg); }
-    catch (e) { toast(`저장 실패: ${e.code || e.message}`); }
+    S.spendRefs.forEach((r) => r.off());
+    const cur = ref(`spend/${S.month}`);
+    const prev = ref(`spend/${addMonths(S.month, -1)}`);
+    cur.on("value", (s) => { S.spend = obj(s.val()); renderSpend(); }, (e) => toast(`지출 읽기 실패: ${e.code}`));
+    prev.on("value", (s) => { S.spendPrev = obj(s.val()); renderSpend(); }, () => {});
+    S.spendRefs = [cur, prev];
   }
 
   // ───────── tabs ─────────
-  function initialTab() {
-    const h = location.hash.replace("#", "");
-    return ["today", "spend", "res", "block"].includes(h) ? h : lsGet("pa.tab", "today");
-  }
   function switchTab(tab) {
+    if (!TABS.includes(tab)) tab = "daily";
     S.tab = tab;
-    lsSet("pa.tab", tab);
+    lsSet("md.tab", tab);
     if (location.hash !== "#" + tab) history.replaceState(null, "", "#" + tab);
-    $$(".tab").forEach((t) => (t.hidden = t.id !== `tab-${tab}`));
+    $$(".tab").forEach((t) => { t.hidden = t.id !== `tab-${tab}`; });
     $$("#tabbar button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
     window.scrollTo({ top: 0 });
+    renderBanner();
   }
-  $$("#tabbar button").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
-  window.addEventListener("hashchange", () => {
-    const h = location.hash.replace("#", "");
-    if (!$("#tabbar").hidden && ["today", "spend", "res", "block"].includes(h) && h !== S.tab) switchTab(h);
-  });
+  $("#tabbar").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) switchTab(b.dataset.tab); });
+  window.addEventListener("hashchange", () => { const t = location.hash.slice(1); if (TABS.includes(t) && !$("#tabbar").hidden) switchTab(t); });
+  $("#expGo").addEventListener("click", () => { S.vaultFilter = "all"; switchTab("vault"); renderVault(); });
 
-  // ───────── header / run status ─────────
+  // ───────── header / banner ─────────
   function renderRun() {
     const r = S.lastRun;
     const dot = $("#runDot");
-    dot.className = "dot";
-    if (!r || !r.finishedAt) { $("#runInfo").textContent = "아직 수집 기록 없음"; return; }
-    const fin = new Date(r.finishedAt);
-    const ageH = (Date.now() - fin.getTime()) / 3.6e6;
-    const accs = r.accounts || {};
-    const failed = Object.entries(accs).filter(([, v]) => v && v.ok === false).map(([k]) => label(k));
-    dot.classList.add(failed.length ? "bad" : ageH > 26 ? "stale" : "ok");
-    const t = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(fin);
-    $("#runInfo").textContent = failed.length ? `수집 ${t} · 실패: ${failed.join(", ")}` : `수집 ${t} · ${Object.keys(accs).length}계정 정상${ageH > 26 ? " · 지연" : ""}`;
-  }
-  const label = (id) => (S.accounts[id] && S.accounts[id].label) || id;
-
-  // ───────── TODAY ─────────
-  $("#dayPick").addEventListener("change", (e) => { if (e.target.value) { S.day = e.target.value; ensureDay(S.day); renderToday(); } });
-  $$("[data-day]").forEach((b) => b.addEventListener("click", () => { S.day = addDays(S.day, Number(b.dataset.day)); ensureDay(S.day); renderToday(); }));
-
-  function dayTotals(d) {
-    const out = { total: 0, unread: 0, bulk: 0, spend: 0, reservations: 0 };
-    Object.values(d || {}).forEach((a) => { if (!a) return; for (const k in out) out[k] += Number(a[k]) || 0; });
-    return out;
+    if (!r || !r.startedAt) { $("#runInfo").textContent = "수집 기록 없음"; dot.className = "dot"; return; }
+    const ageH = (Date.now() - new Date(r.finishedAt || r.startedAt).getTime()) / 3600000;
+    const bad = Object.entries(obj(r.accounts)).filter(([, a]) => a && a.ok === false).map(([k]) => k);
+    dot.className = "dot " + (bad.length ? "bad" : ageH > 30 ? "stale" : "ok");
+    const t = new Date(r.finishedAt || r.startedAt);
+    const when = `${fmtKST.format(t).slice(5)} ${t.toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })}`;
+    $("#runInfo").textContent = bad.length ? `${when} 수집 · 실패 ${bad.join(", ")}` : `${when} 수집${ageH > 30 ? " · 지연" : ""}`;
   }
 
-  function renderToday() {
-    if (!$("#dayPick")) return;
+  function renderBanner() {
+    const warn = Object.values(S.retention).filter((e) => e && PATH_RE.test(e.path || "") && isWarn(e));
+    const n = warn.length;
+    const b = $("#vaultBadge");
+    b.hidden = !n; b.textContent = n;
+    const banner = $("#expBanner");
+    banner.hidden = !n || $("#tabbar").hidden || S.tab === "vault";
+    if (n) {
+      const soon = Math.min(...warn.map((e) => daysLeft(e.actionAt)));
+      $("#expText").textContent = `숨김·차단 ${n}건이 ${soon === 0 ? "오늘" : `D-${soon}`} 이내 자동 삭제됩니다`;
+    }
+  }
+
+  // ───────── 일별 정리 ─────────
+  $("#dayPick").addEventListener("change", (e) => { if (isDate(e.target.value)) { S.day = e.target.value; attachDay(); } });
+  $$("[data-day]").forEach((b) => b.addEventListener("click", () => {
+    const n = addDays(S.day, Number(b.dataset.day));
+    if (n > todayKST()) return;
+    S.day = n; attachDay();
+  }));
+  $("#dayFilter").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-f]"); if (!b) return;
+    S.dayFilter = b.dataset.f;
+    $$("#dayFilter button").forEach((x) => x.classList.toggle("on", x === b));
+    renderDaily();
+  });
+
+  function accLabel(aid) { return (S.accounts[aid] && S.accounts[aid].label) || aid; }
+
+  function renderDaily() {
     $("#dayPick").value = S.day;
-    const d = S.daily[S.day] || {};
-    const t = dayTotals(d);
-    if (auth.currentUser) ensureSpendMonth(S.day.slice(0, 7));
-    const ds = daySpendByAccount(S.day);
-    if (ds) t.spend = Object.values(ds).reduce((s, v) => s + v, 0);
-    const bulkPct = t.total ? Math.round((t.bulk / t.total) * 100) : 0;
-    const isToday = S.day === todayKST();
+    $("#dayPick").max = todayKST();
+    const day = obj(S.dailyRange[S.day]);
+    const accs = Object.keys(day).sort();
+    let total = 0, unread = 0, ads = 0, spend = 0, resCnt = 0;
+    const items = [];
+    accs.forEach((aid) => {
+      const a = obj(day[aid]);
+      total += a.total || 0; unread += a.unread || 0; ads += a.ads || 0; spend += a.spendKRW || 0; resCnt += a.reservations || 0;
+      Object.entries(obj(a.items)).forEach(([k, it]) => {
+        if (!it || it.hidden) return;
+        items.push({ ...it, key: k, aid, path: `daily/${S.day}/${aid}/items/${k}` });
+      });
+    });
     $("#dayKpis").innerHTML = [
-      kpi("수신", t.total, `일반 ${t.total - t.bulk}${isToday ? " · 집계 중" : ""}`),
-      kpi("미열람", t.unread, `${wd(S.day)}요일`),
-      kpi("광고", t.bulk, `${bulkPct}%`),
-      kpi("지출", `₩${won(t.spend)}`, `예약 ${t.reservations}건`),
-    ].join("");
+      ["수신", total, `${accs.length}개 계정`],
+      ["미열람", unread, total ? `${Math.round((unread / total) * 100)}%` : "-"],
+      ["광고", ads, total ? `${Math.round((ads / total) * 100)}%` : "-"],
+      ["지출", `₩${won(spend)}`, `예약 ${resCnt}건`],
+    ].map(([k, v, d]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${esc(v)}</div><div class="d">${esc(d)}</div></div>`).join("");
 
-    const ids = Array.from(new Set([...Object.keys(S.accounts), ...Object.keys(d)])).sort();
-    const runAcc = (S.lastRun && S.lastRun.accounts) || {};
-    $("#dayAccounts").innerHTML = ids.length ? ids.map((id) => {
-      const a = d[id] || {};
-      const err = runAcc[id] && runAcc[id].ok === false ? `<span class="err-chip" title="${esc(runAcc[id].error)}">수집 실패</span>` : "";
-      return `<div class="acc"><div class="t"><span>${esc(label(id))}</span>${err}</div>
-        <div class="m"><div>수신<b>${a.total || 0}</b></div><div>미열람<b>${a.unread || 0}</b></div>
-        <div>광고<b>${a.bulk || 0}</b></div><div>지출<b>${won(ds ? ds[id] || 0 : a.spend)}</b></div></div></div>`;
-    }).join("") : `<div class="acc muted">계정 데이터 없음</div>`;
+    const f = S.dayFilter;
+    const shown = items.filter((x) => f === "all" ? x.tag !== "ad"
+      : f === "unread" ? x.unread && x.tag !== "ad"
+        : f === "key" ? x.tag === "spend" || x.tag === "res"
+          : x.tag === "ad");
+    shown.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
+    const TAG = { spend: "지출", res: "예약", ad: "광고", mail: "" };
+    const adNote = f === "all" && ads ? `<p class="muted small">광고 ${ads}건은 '광고' 필터에서 확인</p>` : "";
+    $("#dayList").innerHTML = (shown.length ? `<ul class="list">${shown.map((x) => `
+      <li class="${x.unread ? "unread" : ""}">
+        <span class="s">${TAG[x.tag] ? `<span class="tag t-${x.tag}">${TAG[x.tag]}</span>` : ""}${esc(x.subject || "(제목 없음)")}</span>
+        <span class="r">${esc(x.time || "")}</span>
+        <span class="f">${esc(x.from)} · ${esc(accLabel(x.aid))}</span>
+        <button class="linkish" type="button" data-hide="${esc(x.path)}" data-label="${esc(x.subject || "")}">숨기기</button>
+      </li>`).join("")}</ul>` : `<ul class="list"><li class="empty">${total ? "해당 메일 없음" : "수집 데이터 없음"}</li></ul>`) + adNote;
 
-    const imp = [];
-    for (const [id, a] of Object.entries(d)) (a && a.important || []).forEach((m) => imp.push({ ...m, acc: id }));
-    imp.sort((x, y) => (y.time || "").localeCompare(x.time || ""));
-    $("#dayImportant").innerHTML = imp.length ? imp.map((m) =>
-      `<li><span class="s">${esc(m.subject)}</span><span class="r">${esc(m.time)}</span>
-       <span class="f"><span class="tag">${esc(label(m.acc))}</span>${esc(m.from)}</span><span></span></li>`).join("")
-      : `<li><span class="empty">미열람 주요 메일 없음</span></li>`;
-
-    const end = addDays(S.day, 7);
-    const up = Object.entries(S.reservations)
-      .map(([k, v]) => ({ k, ...v }))
-      .filter((r) => !r.hidden && r.status !== "canceled" && r.eventDate >= S.day && r.eventDate <= end)
-      .sort((a, b) => (a.eventDate + (a.eventTime || "")).localeCompare(b.eventDate + (b.eventTime || "")));
-    $("#dayUpcoming").innerHTML = up.length ? up.map((r) => {
-      const dd = dayDiff(todayKST(), r.eventDate);
-      return `<li><span class="s">${esc(r.title)}</span><span class="r">${dd === 0 ? "오늘" : dd > 0 ? "D-" + dd : "D+" + -dd}</span>
-        <span class="f">${esc(r.eventDate.slice(5).replace("-", "/"))}(${wd(r.eventDate)}) ${esc(r.eventTime || "")} · ${esc(r.vendor || "")}${r.place ? " · " + esc(r.place) : ""}</span><span></span></li>`;
-    }).join("") : `<li><span class="empty">7일 내 예약 없음</span></li>`;
-
+    // 14일 추이
     const days = Array.from({ length: 14 }, (_, i) => addDays(S.day, i - 13));
-    const vals = days.map((x) => dayTotals(S.daily[x]));
-    const max = Math.max(1, ...vals.map((v) => v.total));
-    $("#dayTrend").innerHTML = days.map((x, i) => {
-      const v = vals[i];
-      const a = ((v.total - v.bulk) / max) * 100, b = (v.bulk / max) * 100;
-      return `<div class="col${x === S.day ? " sel" : ""}" data-go="${x}" title="${x} 수신 ${v.total} / 광고 ${v.bulk}">
-        <i class="a" style="height:${a}%"></i><i class="b" style="height:${b}%"></i>
-        <span>${i % 2 === 1 || x === S.day ? Number(x.slice(8)) : ""}</span></div>`;
-    }).join("");
-    $$("#dayTrend [data-go]").forEach((c) => c.addEventListener("click", () => { S.day = c.dataset.go; renderToday(); }));
+    const vals = days.map((d) => {
+      const o = obj(S.dailyRange[d]);
+      let t = 0, a = 0;
+      Object.values(o).forEach((x) => { t += (x && x.total) || 0; a += (x && x.ads) || 0; });
+      return { d, n: t - a, a };
+    });
+    const max = Math.max(1, ...vals.map((v) => v.n + v.a));
+    $("#dayTrend").innerHTML = vals.map((v) => `
+      <div class="col${v.d === S.day ? " sel" : ""}" data-d="${v.d}" title="${v.d} 일반 ${v.n} · 광고 ${v.a}">
+        <i class="a" style="height:${(v.n / max) * 100}%"></i><i class="b" style="height:${(v.a / max) * 100}%"></i>
+        <span>${Number(v.d.slice(8))}</span>
+      </div>`).join("");
   }
+  $("#dayList").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-hide]"); if (!b) return;
+    hideItem(b.dataset.hide, b.dataset.label);
+  });
+  $("#dayTrend").addEventListener("click", (e) => {
+    const c = e.target.closest(".col[data-d]"); if (!c) return;
+    S.day = c.dataset.d; attachDay();
+  });
 
-  function kpi(k, v, d, cls = "") {
-    return `<div class="kpi"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d ${cls}">${esc(d)}</div></div>`;
-  }
-
-  // ───────── SPEND ─────────
-  $("#monthPick").addEventListener("change", (e) => { if (e.target.value) { S.month = e.target.value; attachSpend(); renderSpend(); } });
-  $$("[data-month]").forEach((b) => b.addEventListener("click", () => { S.month = addMonths(S.month, Number(b.dataset.month)); attachSpend(); renderSpend(); }));
+  // ───────── 월별 지출 ─────────
+  $("#monthPick").addEventListener("change", (e) => { if (isMonth(e.target.value)) { S.month = e.target.value; attachSpend(); } });
+  $$("[data-month]").forEach((b) => b.addEventListener("click", () => {
+    const n = addMonths(S.month, Number(b.dataset.month));
+    if (n > todayKST().slice(0, 7)) return;
+    S.month = n; attachSpend();
+  }));
+  $("#dupToggle").addEventListener("click", () => { S.showDup = !S.showDup; renderSpend(); });
 
   function renderSpend() {
     $("#monthPick").value = S.month;
-    const all = dedupeSpend(S.spend);
-    const act = uniqActiveKRW(all);
-    const dupTotal = all.filter((x) => x.dupOf).length;
-    const total = act.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-    const prevTotal = uniqActiveKRW(dedupeSpend(S.spendPrev)).reduce((s, x) => s + (Number(x.amount) || 0), 0);
-    const usdTotal = all.filter((x) => !x.excluded && !x.dupOf && x.currency === "USD").reduce((s, x) => s + (Number(x.amount) || 0), 0);
-    const curMonth = todayKST().slice(0, 7);
-    const [y, m] = S.month.split("-").map(Number);
-    const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    const elapsed = S.month === curMonth ? Number(todayKST().slice(8)) : S.month < curMonth ? daysIn : 0;
-    let deltaTxt = "전월 데이터 없음", deltaCls = "";
-    if (prevTotal > 0) {
-      const p = ((total - prevTotal) / prevTotal) * 100;
-      deltaTxt = `${p >= 0 ? "▲" : "▼"} ${Math.abs(p).toFixed(1)}% (전월 ₩${won(prevTotal)})`;
-      deltaCls = p >= 0 ? "up" : "down";
-    }
+    $("#monthPick").max = todayKST().slice(0, 7);
+    const list = dedupeSpend(S.spend);
+    const act = activeKRW(list);
+    const sum = act.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    const prevSum = activeKRW(dedupeSpend(S.spendPrev)).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    const fxList = list.filter((x) => !x.excluded && !x.dupOf && (x.currency || "KRW") !== "KRW");
+    const fxText = Object.entries(fxList.reduce((m, x) => { m[x.currency] = (m[x.currency] || 0) + (Number(x.amount) || 0); return m; }, {}))
+      .map(([c, v]) => `${c} ${fx(v)}`).join(" · ") || "-";
+    const delta = prevSum ? Math.round(((sum - prevSum) / Math.abs(prevSum)) * 100) : null;
+    const isCur = S.month === todayKST().slice(0, 7);
+    const daysIn = isCur ? Number(todayKST().slice(8)) : new Date(Date.UTC(+S.month.slice(0, 4), +S.month.slice(5), 0)).getUTCDate();
     $("#spendKpis").innerHTML = [
-      kpi("월 합계", `₩${won(total)}`, deltaTxt, deltaCls),
-      kpi("건수", act.length, `중복 ${dupTotal} · 제외 ${all.filter((x) => x.excluded).length}건`),
-      kpi("일평균", elapsed ? `₩${won(total / elapsed)}` : "-", elapsed ? `${elapsed}일 기준` : "미래 월"),
-      kpi("해외(USD)", usdTotal ? `$${usd(usdTotal)}` : "-", "원화 합계 미포함"),
-    ].join("");
+      ["합계", `₩${won(sum)}`, delta === null ? "전월 데이터 없음" : `전월 대비 ${delta > 0 ? "+" : ""}${delta}%`, delta === null ? "" : delta > 0 ? "up" : "down"],
+      ["건수", act.length, `중복 병합 ${list.filter((x) => x.dupOf).length}건`, ""],
+      ["일평균", `₩${won(sum / Math.max(1, daysIn))}`, `${daysIn}일 기준`, ""],
+      ["외화", fxText, "합계 미포함", ""],
+    ].map(([k, v, d, c]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${esc(v)}</div><div class="d ${c}">${esc(d)}</div></div>`).join("");
 
-    const byCat = {};
-    act.forEach((x) => { const c = x.category || "기타"; byCat[c] = (byCat[c] || 0) + (Number(x.amount) || 0); });
-    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
-    const maxCat = Math.max(1, ...cats.map((c) => c[1]));
-    $("#spendCats").innerHTML = cats.length ? cats.map(([c, v]) =>
-      `<div class="bar"><span class="n">${esc(c)}</span><span class="track"><span class="fill" style="width:${Math.max(0, (v / maxCat) * 100)}%"></span></span>
-       <span class="v">₩${won(v)}<small>${total > 0 ? Math.round((v / total) * 100) : 0}%</small></span></div>`).join("")
-      : `<p class="muted small" style="padding:10px 0;margin:0">이 달 지출 데이터 없음</p>`;
+    const cats = {};
+    act.forEach((x) => { const c = x.category || "기타"; cats[c] = (cats[c] || 0) + (Number(x.amount) || 0); });
+    const ordered = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+    const cmax = Math.max(1, ...ordered.map(([, v]) => Math.abs(v)));
+    $("#spendCats").innerHTML = ordered.length ? ordered.map(([c, v]) => `
+      <div class="bar"><span class="n">${esc(c)}</span><span class="track"><span class="fill" style="width:${(Math.abs(v) / cmax) * 100}%"></span></span>
+      <span class="v">₩${won(v)}<small>${sum ? Math.round((v / sum) * 100) : 0}%</small></span></div>`).join("")
+      : `<p class="muted small" style="text-align:center">이 달 지출 없음</p>`;
 
-    const dupBtn = $("#dupToggle");
-    dupBtn.hidden = dupTotal === 0;
-    dupBtn.textContent = S.showDup ? `중복 ${dupTotal}건 숨기기` : `중복 ${dupTotal}건 보기`;
-    const shown = S.showDup ? all : all.filter((x) => !x.dupOf);
+    const dupCnt = list.filter((x) => x.dupOf).length;
+    const dt = $("#dupToggle");
+    dt.hidden = !dupCnt;
+    dt.textContent = S.showDup ? "중복 숨기기" : `중복 ${dupCnt}건 보기`;
+
+    const visible = list.filter((x) => S.showDup || !x.dupOf);
     const byDate = {};
-    shown.forEach((x) => (byDate[x.date || "-"] = byDate[x.date || "-"] || []).push(x));
-    const dates = Object.keys(byDate).sort().reverse();
-    if (!dates.length) { $("#spendList").innerHTML = ""; return; }
-    $("#spendList").innerHTML = dates.map((dte) => {
-      const items = byDate[dte].sort((a, b) => (b.time || "").localeCompare(a.time || "") || (a.dupOf ? 1 : 0) - (b.dupOf ? 1 : 0));
-      const sum = uniqActiveKRW(items).reduce((s, x) => s + (Number(x.amount) || 0), 0);
-      return `<div class="dgroup"><div class="dhead"><span>${dte.slice(5).replace("-", "/")} (${wd(dte)})</span><span class="num">₩${won(sum)}</span></div>
-        ${items.map((x) => {
-          const amt = Number(x.amount) || 0;
-          const cur = x.currency === "USD" ? `$${usd(amt)}` : `₩${won(amt)}`;
-          const accs = x.dups.length
-            ? Array.from(new Set([x.account, ...x.dups.map((k) => (S.spend[k] || {}).account)].filter(Boolean))).map(label).join("·")
-            : "";
-          const dup = x.dupOf
-            ? `<span class="chip dup">중복·숨김</span>`
-            : x.dups.length ? `<span class="chip merged" title="${esc(accs)}">${x.dups.length + 1}건 병합</span>` : "";
-          const man = x.manual ? `<span class="chip manual">수정</span>` : "";
-          return `<div class="item${x.excluded || x.dupOf ? " excluded" : ""}" data-k="${esc(x.key)}">
-            <span class="s">${esc(x.merchant || x.from || "-")}${dup}${man}</span><span class="amt num${amt < 0 ? " neg" : ""}">${cur}</span>
-            <span class="f"><span class="tag">${esc(x.category || "기타")}</span>${esc(x.time || "")} · ${esc(accs || label(x.account))} · ${esc(x.subject || "")}</span><span></span></div>`;
+    visible.forEach((x) => { (byDate[x.date || "-"] = byDate[x.date || "-"] || []).push(x); });
+    $("#spendList").innerHTML = Object.keys(byDate).sort().reverse().map((d) => {
+      const rows = byDate[d].sort((a, b) => (b.time || "").localeCompare(a.time || ""));
+      const daySum = activeKRW(rows).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+      return `<div class="dgroup"><div class="dhead"><span>${esc(d)}${isDate(d) ? ` (${wd(d)})` : ""}</span><span class="num">₩${won(daySum)}</span></div>
+        ${rows.map((x) => {
+          const cur = x.currency || "KRW";
+          const amt = cur === "KRW" ? `₩${won(x.amount)}` : `${cur} ${fx(x.amount)}`;
+          const chips = [x.dupOf ? `<span class="chip dup">중복</span>` : "", x.dups.length ? `<span class="chip merged">+${x.dups.length} 병합</span>` : "",
+            x.manual ? `<span class="chip manual">수정</span>` : ""].join("");
+          return `<div class="item${x.excluded || x.dupOf ? " excluded" : ""}" data-sp="${esc(x.key)}" role="button" tabindex="0">
+            <span class="s">${esc(x.merchant || x.from || "-")}${chips}</span>
+            <span class="amt${Number(x.amount) < 0 ? " neg" : ""}">${esc(amt)}</span>
+            <span class="f">${esc(x.category || "기타")} · ${esc(x.time || "")} · ${esc(accLabel(x.account))}</span>
+          </div>`;
         }).join("")}</div>`;
-    }).join("");
-    $$("#spendList .item").forEach((el) => el.addEventListener("click", () => openCat(el.dataset.k)));
+    }).join("") || `<p class="muted small" style="text-align:center">항목 없음</p>`;
   }
 
-  $("#dupToggle").addEventListener("click", () => { S.showDup = !S.showDup; renderSpend(); });
-
-  let editKey = null;
-  function openCat(key) {
+  let spKey = null;
+  const catOptions = () => {
+    const extra = Object.values(S.spend).map((x) => x && x.category).filter((c) => c && !DEFAULT_CATS.includes(c));
+    return [...DEFAULT_CATS, ...new Set(extra)];
+  };
+  function openSpend(key) {
     const x = S.spend[key];
-    if (!x) return;
-    editKey = key;
-    const cats = Array.from(new Set([...DEFAULT_CATS, ...Object.values(S.spend).map((v) => v.category).filter(Boolean)]));
-    $("#catTitle").textContent = `${x.merchant || x.from} · ${x.currency === "USD" ? "$" + usd(x.amount) : "₩" + won(x.amount)}`;
-    $("#catSelect").innerHTML = cats.map((c) => `<option ${c === (x.category || "기타") ? "selected" : ""}>${esc(c)}</option>`).join("");
-    $("#catExclude").checked = !!x.excluded;
-    $("#catNotDup").checked = !!x.notDup;
-    const dlg = $("#catDialog");
-    if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+    if (!x || !KEY_RE.test(key)) return;
+    spKey = key;
+    $("#spTitle").textContent = x.merchant || "지출 항목";
+    $("#spMeta").textContent = `${x.date || ""} ${x.time || ""} · ${x.subject || ""}`;
+    $("#spCat").innerHTML = catOptions().map((c) => `<option${c === (x.category || "기타") ? " selected" : ""}>${esc(c)}</option>`).join("");
+    $("#spExclude").checked = !!x.excluded;
+    $("#spNotDup").checked = !!x.notDup;
+    if (typeof $("#spendDialog").showModal === "function") $("#spendDialog").showModal();
   }
-  $("#catDialog").addEventListener("close", () => {
-    const dlg = $("#catDialog");
-    if (dlg.returnValue !== "ok" || !editKey) return;
-    const base = `spend/${S.month}/${editKey}`;
+  $("#spendList").addEventListener("click", (e) => { const it = e.target.closest("[data-sp]"); if (it) openSpend(it.dataset.sp); });
+  $("#spendList").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const it = e.target.closest("[data-sp]"); if (it) { e.preventDefault(); openSpend(it.dataset.sp); }
+  });
+  $("#spendDialog").addEventListener("close", () => {
+    if ($("#spendDialog").returnValue !== "ok" || !spKey) return;
+    const p = `spend/${S.month}/${spKey}`;
     write({
-      [`${base}/category`]: $("#catSelect").value,
-      [`${base}/manual`]: true,
-      [`${base}/excluded`]: $("#catExclude").checked,
-      [`${base}/notDup`]: $("#catNotDup").checked,
+      [`${p}/category`]: $("#spCat").value,
+      [`${p}/excluded`]: $("#spExclude").checked || null,
+      [`${p}/notDup`]: $("#spNotDup").checked || null,
+      [`${p}/manual`]: true,
     }, "저장됨");
-    editKey = null;
+  });
+  $("#spHide").addEventListener("click", () => {
+    if (!spKey) return;
+    const x = S.spend[spKey] || {};
+    $("#spendDialog").close("cancel");
+    hideItem(`spend/${S.month}/${spKey}`, `${x.merchant || "지출"} ₩${won(x.amount)}`);
   });
 
-  // ───────── RESERVATIONS ─────────
-  $$("#resFilter button").forEach((b) => b.addEventListener("click", () => {
+  // ───────── 예약 일자별 ─────────
+  $("#resFilter").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-f]"); if (!b) return;
     S.resFilter = b.dataset.f;
     $$("#resFilter button").forEach((x) => x.classList.toggle("on", x === b));
     renderRes();
-  }));
+  });
 
   function renderRes() {
     const today = todayKST();
-    let list = Object.entries(S.reservations).map(([k, v]) => ({ k, ...v })).filter((r) => !r.hidden && r.eventDate);
-    if (S.resFilter === "upcoming") list = list.filter((r) => r.eventDate >= today);
-    if (S.resFilter === "past") list = list.filter((r) => r.eventDate < today);
-    const keyOf = (r) => r.eventDate + (r.eventTime || "99:99");
-    list.sort((a, b) => S.resFilter === "past" ? keyOf(b).localeCompare(keyOf(a)) : keyOf(a).localeCompare(keyOf(b)));
-    const groups = {};
-    list.forEach((r) => (groups[r.eventDate] = groups[r.eventDate] || []).push(r));
-    const ks = Object.keys(groups);
-    $("#resList").innerHTML = ks.length ? ks.map((d) => {
-      const dd = dayDiff(today, d);
-      const ddTxt = dd === 0 ? "오늘" : dd > 0 ? `D-${dd}` : `D+${-dd}`;
-      return `<div class="rday"><div class="rdate"><div class="dd">${Number(d.slice(8))}</div>
-        <div class="mm">${Number(d.slice(5, 7))}월 ${wd(d)}</div><span class="dday${dd === 0 ? " today" : ""}">${ddTxt}</span></div>
-        <div>${groups[d].map((r) => `<div class="ritem${r.status === "canceled" ? " canceled" : ""}">
-          <div class="s">${r.eventTime ? `<span class="num">${esc(r.eventTime)}</span> ` : ""}${esc(r.title)}</div>
-          <div class="f">${esc(r.vendor || "")}${r.place ? " · " + esc(r.place) : ""} · ${esc(label(r.account))}${r.status === "canceled" ? " · 취소됨" : ""}</div>
-          <div class="acts"><button class="linkish" data-hide="${esc(r.k)}">숨기기</button></div></div>`).join("")}</div></div>`;
-    }).join("") : `<p class="muted" style="text-align:center;padding:30px 0">${S.resFilter === "past" ? "지난 예약 없음" : "예정된 예약 없음"}</p>`;
-    $$("#resList [data-hide]").forEach((b) => b.addEventListener("click", () => {
-      const r = S.reservations[b.dataset.hide];
-      if (!r) return;
-      const when = `${r.eventDate || ""}${r.eventTime ? " " + r.eventTime : ""}`;
-      const msg = `이 예약을 숨길까요?\n\n${r.title || "(제목 없음)"}\n${when}${r.vendor ? " · " + r.vendor : ""}\n\n※ 현재 앱에서는 숨긴 예약을 다시 볼 수 없습니다.`;
-      if (!confirm(msg)) return;
-      write({ [`reservations/${b.dataset.hide}/hidden`]: true }, "숨김 처리");
-    }));
+    const all = Object.entries(S.reservations)
+      .filter(([k, v]) => v && typeof v === "object" && !v.hidden && isDate(v.eventDate) && KEY_RE.test(k))
+      .map(([key, v]) => ({ key, ...v }));
+    const f = S.resFilter;
+    const list = all.filter((x) => f === "all" || (f === "upcoming" ? x.eventDate >= today : x.eventDate < today));
+    list.sort((a, b) => (f === "past" ? -1 : 1) * (a.eventDate.localeCompare(b.eventDate) || (a.eventTime || "").localeCompare(b.eventTime || "")));
+    const groups = [];
+    list.forEach((x) => {
+      const g = groups[groups.length - 1];
+      if (g && g.d === x.eventDate) g.items.push(x); else groups.push({ d: x.eventDate, items: [x] });
+    });
+    $("#resList").innerHTML = groups.length ? groups.map((g) => {
+      const dd = dayDiff(today, g.d);
+      const tag = dd === 0 ? `<span class="dday today">오늘</span>` : dd > 0 ? `<span class="dday">D-${dd}</span>` : `<span class="dday">${-dd}일 전</span>`;
+      return `<div class="rday"><div class="rdate"><div class="mm">${g.d.slice(0, 7)} (${wd(g.d)})</div><div class="dd">${Number(g.d.slice(8))}</div>${tag}</div>
+        <div>${g.items.map((x) => `<div class="ritem${x.status === "canceled" ? " canceled" : ""}">
+          <div class="s">${x.eventTime ? `<span class="num">${esc(x.eventTime)}</span> ` : ""}${esc(x.title || x.subject || "(제목 없음)")}</div>
+          <div class="f">${esc(x.vendor || "")}${x.place ? ` · ${esc(x.place)}` : ""} · ${esc(accLabel(x.account))}${x.status === "canceled" ? " · 취소됨" : ""}</div>
+          <div class="acts"><button class="linkish" type="button" data-hide="reservations/${esc(x.key)}" data-label="${esc(x.title || "")}">숨기기</button></div>
+        </div>`).join("")}</div></div>`;
+    }).join("") : `<p class="muted small" style="text-align:center">${f === "upcoming" ? "예정된 예약 없음" : "예약 없음"}</p>`;
   }
+  $("#resList").addEventListener("click", (e) => { const b = e.target.closest("[data-hide]"); if (b) hideItem(b.dataset.hide, b.dataset.label); });
 
-  // ───────── BLOCK ─────────
-  $("#blockRule").textContent = `최근 ${BLOCK_RULE.days}일 광고성 메일 ${BLOCK_RULE.min}통 이상 · 열람률 ${BLOCK_RULE.maxRate * 100}% 이하 발신자. 승인하면 다음 수집 때 수신거부(원클릭 지원 시 자동) + 기존 메일 휴지통 이동, 이후 신규 메일도 자동 이동합니다.`;
+  // ───────── 광고 차단 요청 ─────────
+  $("#blockRule").textContent = `기준: 최근 ${BLOCK_RULE.days}일 광고성 메일 ${BLOCK_RULE.min}통 이상 · 열람률 ${BLOCK_RULE.maxRate * 100}% 이하 발신자. ` +
+    `[차단] → 다음 수집 때 원클릭 수신거부(지원 시) + 해당 발신자 메일 휴지통 이동, 이후 신규 메일도 매일 휴지통 이동. ` +
+    `[유지] → 목록에서 숨김. 둘 다 ${RETAIN_DAYS}일 후 자동 삭제되며 차단 항목은 삭제 시 차단도 해제됩니다.`;
 
-  function methodBadge(c) {
-    if (c.oneClick) return `<span class="method auto">원클릭 수신거부</span>`;
-    if (c.unsubHttp || c.unsubMailto) return `<span class="method manual">수동 수신거부</span>`;
-    return `<span class="method none">휴지통 이동만</span>`;
+  function methodBadge(s) {
+    if (s.oneClick && isHttps(s.unsubHttp)) return `<span class="method auto">자동 수신거부</span>`;
+    if (isHttps(s.unsubHttp) || isMailto(s.unsubMailto)) return `<span class="method manual">수동 수신거부</span>`;
+    return `<span class="method none">휴지통만</span>`;
   }
 
   function renderBlock() {
-    const all = Object.entries(S.candidates).map(([k, v]) => ({ k, ...v }));
-    const pending = all.filter((c) => c.status === "pending" || c.status === "approved")
-      .sort((a, b) => (a.status === b.status ? (b.total || 0) - (a.total || 0) : a.status === "pending" ? -1 : 1));
-    const done = all.filter((c) => c.status === "done").sort((a, b) => ((b.result && b.result.at) || "").localeCompare((a.result && a.result.at) || ""));
-    const nPending = all.filter((c) => c.status === "pending").length;
-    $("#blockCount").textContent = nPending;
-    $("#blockBadge").hidden = !nPending;
-    $("#blockBadge").textContent = nPending;
-    $("#approveAll").hidden = nPending < 2;
+    const all = Object.entries(S.adSenders).filter(([k, v]) => v && typeof v === "object" && KEY_RE.test(k)).map(([key, v]) => ({ key, ...v }));
+    const pending = all.filter((x) => x.status === "pending").sort((a, b) => (b.total || 0) - (a.total || 0));
+    const active = all.filter((x) => x.status === "blocked").sort((a, b) => String(b.blockedAt || "").localeCompare(String(a.blockedAt || "")));
+    $("#blockCount").textContent = pending.length;
+    $("#blockAll").hidden = pending.length < 2;
+    const badge = $("#blockBadge"); badge.hidden = !pending.length; badge.textContent = pending.length;
 
-    $("#blockPending").innerHTML = pending.length ? pending.map((c) => {
-      const rate = Math.round((c.rate || 0) * 100);
-      const acts = c.status === "approved"
-        ? `<span class="state">승인됨 · 다음 수집 시 처리</span><button class="btn small" data-act="undo" data-k="${esc(c.k)}">승인 취소</button>`
-        : `<button class="btn" data-act="keep" data-k="${esc(c.k)}">유지</button><button class="btn primary" data-act="approve" data-k="${esc(c.k)}">차단 승인</button>`;
-      return `<div class="bcard"><div class="top"><div style="min-width:0"><div class="nm">${esc(c.name || c.sender)}</div>
-        <div class="em">${esc(c.sender)} · ${esc(label(c.account))}</div></div>${methodBadge(c)}</div>
-        <div class="meter"><i style="width:${rate}%"></i></div>
-        <div class="stats"><span class="num">${BLOCK_RULE.days}일 ${c.total || 0}통</span><span class="num">열람 ${c.read || 0}통 (${rate}%)</span></div>
-        <div class="ls">최근: ${esc(c.lastSubject || "")}</div><div class="acts">${acts}</div></div>`;
-    }).join("") : `<p class="muted small" style="text-align:center;padding:18px 0">차단 요청 없음</p>`;
+    $("#blockPending").innerHTML = pending.length ? pending.map((x) => {
+      const rate = Math.round((Number(x.rate) || 0) * 100);
+      return `<div class="bcard">
+        <div class="top"><div style="min-width:0"><div class="nm">${esc(x.name || x.sender)}</div><div class="em">${esc(x.sender)}</div></div>${methodBadge(x)}</div>
+        <div class="ls">최근: ${esc(x.lastSubject || "")}</div>
+        <div class="meter" aria-label="열람률"><i style="width:${Math.min(100, rate)}%"></i></div>
+        <div class="stats"><span>${BLOCK_RULE.days}일 ${x.total || 0}통</span><span>열람 ${x.read || 0}통 (${rate}%)</span><span>${esc(accLabel(x.account))}</span></div>
+        <div class="acts"><button class="btn small" type="button" data-keep="${esc(x.key)}">유지</button><button class="btn small danger" type="button" data-block="${esc(x.key)}">차단</button></div>
+      </div>`;
+    }).join("") : `<p class="muted small" style="text-align:center">차단 요청 없음</p>`;
 
-    $("#blockDone").innerHTML = done.length ? done.map((c) => {
-      const r = c.result || {};
-      let how = "휴지통 자동 이동";
-      let link = "";
-      if (r.method === "oneclick") how = r.ok ? "원클릭 수신거부 완료" : `원클릭 실패(${esc(r.code)}) · 휴지통 자동 이동`;
-      if (r.method === "manual_link" && isHttps(c.unsubHttp)) link = `<a class="btn small" href="${esc(c.unsubHttp)}" target="_blank" rel="noopener noreferrer">수신거부 페이지 열기</a>`;
-      if (r.method === "manual_mailto" && c.unsubMailto) link = `<a class="btn small" href="${esc(c.unsubMailto)}">수신거부 메일 작성</a>`;
-      return `<div class="bcard"><div class="top"><div style="min-width:0"><div class="nm">${esc(c.name || c.sender)}</div>
-        <div class="em">${esc(c.sender)} · ${esc(label(c.account))}</div></div><span class="method none">${esc((r.at || "").slice(5, 10).replace("-", "/"))}</span></div>
-        <div class="stats"><span>${how}</span><span class="num">기존 ${r.trashed || 0}통 이동</span></div>
-        <div class="acts">${link || "<span></span>"}<button class="btn small" data-act="unblock" data-k="${esc(c.k)}">차단 해제</button></div></div>`;
-    }).join("") : `<p class="muted small" style="text-align:center;padding:18px 0">처리 이력 없음</p>`;
-
-    $$("#tab-block [data-act]").forEach((b) => b.addEventListener("click", () => blockAction(b.dataset.act, b.dataset.k)));
+    $("#blockActive").innerHTML = active.length ? active.map((x) => {
+      const rid = pathToRid(`adSenders/${x.key}`);
+      const left = daysLeft(x.blockedAt);
+      const u = obj(x.unsub);
+      const unsubTxt = !u.method ? "다음 수집 때 처리" : u.ok ? "수신거부 완료" : u.method === "oneclick" ? `수신거부 실패(${esc(u.code)})` : "수동 수신거부 필요";
+      const manual = !u.ok && (isHttps(x.unsubHttp) || isMailto(x.unsubMailto))
+        ? ` · <a href="${esc(isHttps(x.unsubHttp) ? x.unsubHttp : x.unsubMailto)}" target="_blank" rel="noopener noreferrer">수신거부 링크</a>` : "";
+      return `<div class="bcard">
+        <div class="top"><div style="min-width:0"><div class="nm">${esc(x.name || x.sender)}</div><div class="em">${esc(x.sender)}</div></div><span class="state">${left <= WARN_DAYS ? `<span class="warn-t">D-${left}</span>` : `D-${left}`}</span></div>
+        <div class="stats"><span>${unsubTxt}${manual}</span><span>휴지통 ${x.trashed || 0}건</span><span>${esc(accLabel(x.account))}</span></div>
+        <div class="acts"><button class="btn small" type="button" data-restore="${esc(rid)}">차단 해제</button><button class="btn small" type="button" data-extend="${esc(rid)}">${RETAIN_DAYS}일 연장</button></div>
+      </div>`;
+    }).join("") : `<p class="muted small" style="text-align:center">차단 중인 발신자 없음</p>`;
   }
 
-  function blockAction(act, k) {
-    const c = S.candidates[k];
-    if (!c) return;
-    const now = new Date().toISOString();
-    if (act === "approve") write({ [`blockCandidates/${k}/status`]: "approved", [`blockCandidates/${k}/approvedAt`]: now }, "승인 — 다음 수집 때 처리");
-    if (act === "undo") write({ [`blockCandidates/${k}/status`]: "pending" }, "승인 취소");
-    if (act === "keep") write({
-      [`blockCandidates/${k}/status`]: "rejected",
-      [`allowlist/${k}`]: { sender: c.sender, account: c.account, at: now },
-    }, "유지 — 다시 제안하지 않음");
-    if (act === "unblock") {
-      if (!confirm(`${c.sender} 차단을 해제할까요?\n(이미 수신거부된 구독은 복구되지 않습니다)`)) return;
-      write({
-        [`blocklist/${k}`]: null,
-        [`blockCandidates/${k}/status`]: "rejected",
-        [`allowlist/${k}`]: { sender: c.sender, account: c.account, at: now },
-      }, "차단 해제");
+  $("#tab-block").addEventListener("click", async (e) => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.block) { t.disabled = true; if (await blockSender(t.dataset.block)) toast("차단 등록 — 다음 수집 때 휴지통 이동"); t.disabled = false; }
+    else if (t.dataset.keep) dismissSender(t.dataset.keep);
+    else if (t.dataset.restore) restoreEntry(t.dataset.restore);
+    else if (t.dataset.extend) extendEntry(t.dataset.extend);
+    else if (t.id === "blockAll") {
+      const keys = Object.entries(S.adSenders).filter(([k, v]) => v && v.status === "pending" && KEY_RE.test(k)).map(([k]) => k);
+      if (!keys.length || !window.confirm(`${keys.length}개 발신자를 모두 차단할까요?`)) return;
+      const at = new Date().toISOString();
+      const u = {};
+      keys.forEach((k) => {
+        const p = `adSenders/${k}`;
+        u[`${p}/status`] = "blocked";
+        u[`${p}/blockedAt`] = at;
+        u[`retention/${pathToRid(p)}`] = retentionEntry("blocked", p, S.adSenders[k].name || S.adSenders[k].sender, at);
+      });
+      write(u, `${keys.length}개 차단 등록`);
     }
-  }
+  });
 
-  $("#approveAll").addEventListener("click", () => {
-    const ks = Object.entries(S.candidates).filter(([, v]) => v.status === "pending").map(([k]) => k);
-    if (!ks.length || !confirm(`대기 중 ${ks.length}개 발신자를 모두 차단 승인할까요?`)) return;
-    const now = new Date().toISOString();
-    const up = {};
-    ks.forEach((k) => { up[`blockCandidates/${k}/status`] = "approved"; up[`blockCandidates/${k}/approvedAt`] = now; });
-    write(up, `${ks.length}건 승인`);
+  // ───────── 보관함 ─────────
+  $("#vaultRule").textContent = `숨김·차단 항목은 처리 시점부터 ${RETAIN_DAYS}일 보관 후 승인 없이 자동 삭제됩니다. ` +
+    `만료 ${WARN_DAYS}일 전부터 상단 경고 + 경고 메일(1회). 메일 원본의 영구 삭제는 각 메일함 휴지통 규칙을 따릅니다 ` +
+    `(Gmail 휴지통 30일, 네이버는 메일 환경설정의 휴지통 비우기 설정).`;
+  $("#vaultFilter").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-f]"); if (!b) return;
+    S.vaultFilter = b.dataset.f;
+    $$("#vaultFilter button").forEach((x) => x.classList.toggle("on", x === b));
+    renderVault();
+  });
+
+  const KIND_OF_PATH = (p) => p.startsWith("spend/") ? "지출" : p.startsWith("reservations/") ? "예약" : p.startsWith("daily/") ? "메일" : "발신자";
+
+  function renderVault() {
+    $$("#vaultFilter button").forEach((x) => x.classList.toggle("on", x.dataset.f === S.vaultFilter));
+    const list = Object.entries(S.retention)
+      .filter(([, e]) => e && PATH_RE.test(e.path || "") && Number.isFinite(new Date(e.actionAt).getTime()))
+      .filter(([, e]) => S.vaultFilter === "all" || e.kind === S.vaultFilter)
+      .map(([rid, e]) => ({ rid, ...e, left: daysLeft(e.actionAt) }))
+      .sort((a, b) => a.left - b.left);
+    $("#vaultList").innerHTML = list.length ? list.map((x) => {
+      const warn = x.left <= WARN_DAYS;
+      return `<div class="vitem${warn ? " warn" : ""}">
+        <div class="vtop"><span class="tag">${x.kind === "blocked" ? "차단" : "숨김"}·${KIND_OF_PATH(x.path)}</span>
+          <span class="vleft${warn ? " warn-t" : ""}">${x.left === 0 ? "오늘 삭제" : `D-${x.left}`}</span></div>
+        <div class="s">${esc(x.label || x.path)}</div>
+        <div class="f">처리 ${esc(fmtKST.format(new Date(x.actionAt)))} · 삭제 예정 ${esc(fmtKST.format(expiresOf(x.actionAt)))}${x.warnedAt ? " · 경고 메일 발송됨" : ""}</div>
+        <div class="acts"><button class="btn small" type="button" data-restore="${esc(x.rid)}">${x.kind === "blocked" ? "차단 해제" : "복원"}</button>
+          <button class="btn small" type="button" data-extend="${esc(x.rid)}">${RETAIN_DAYS}일 연장</button></div>
+      </div>`;
+    }).join("") : `<p class="muted small" style="text-align:center">보관 중인 항목 없음</p>`;
+  }
+  $("#vaultList").addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.restore) restoreEntry(t.dataset.restore);
+    else if (t.dataset.extend) extendEntry(t.dataset.extend);
+  });
+
+  // 날짜가 바뀌면(자정 경과, 백그라운드 복귀) D-day 재계산
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || $("#tabbar").hidden) return;
+    renderBanner(); renderVault(); renderBlock(); renderRes();
   });
 })();

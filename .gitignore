@@ -6,3 +6,5 @@ collector/out.json
 *-firebase-adminsdk-*.json
 __pycache__/
 .DS_Store
+client_secret*.json
+.pytest_cache/

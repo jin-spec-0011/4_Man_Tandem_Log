@@ -226,7 +226,7 @@ main { max-width: 760px; margin: 0 auto; padding: 14px 16px 24px; }
 /* Tabbar */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--line); padding-bottom: var(--safe-b);
@@ -243,3 +243,39 @@ dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--p
 dialog::backdrop { background: rgba(0,0,0,.45); }
 .check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .check input { width: 18px; height: 18px; }
+
+/* ── Mail Desk additions ── */
+.banner {
+  position: sticky; top: calc(59px + var(--safe-t)); z-index: 4;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  max-width: 760px; margin: 10px auto 0; padding: 10px 12px;
+  width: calc(100% - 32px);
+  background: color-mix(in srgb, var(--warn) 14%, var(--panel)); color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); border-radius: 10px;
+  font-size: 13px; font-weight: 600;
+}
+@media (display-mode: standalone) { .banner { top: calc(59px + max(var(--safe-t), 44px)); } }
+.banner .btn { flex: none; }
+.warn-t { color: var(--warn); font-weight: 800; }
+.seg.seg4 { grid-template-columns: repeat(4, 1fr); margin-top: 14px; }
+.list li.unread .s { font-weight: 800; }
+.list li .linkish { grid-column: 2; justify-self: end; }
+.list li .f { grid-column: 1; }
+.tag.t-spend { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.tag.t-res { background: color-mix(in srgb, #3a6fd8 16%, transparent); color: #3a6fd8; }
+.tag.t-ad { background: var(--panel-2); color: var(--ink-3); }
+.vitem { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; margin-bottom: 8px; }
+.vitem.warn { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.vitem .vtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.vitem .vleft { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.vitem .s { font-weight: 700; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vitem .f { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.vitem .acts, .bcard .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+#vaultFilter { margin-top: 12px; }
+@media (max-width: 360px) {
+  .tabbar button { font-size: 10px; }
+  .kpi .v { font-size: 18px; }
+  .bar { grid-template-columns: 64px 1fr auto; }
+  .bar .v { min-width: 96px; }
+}
+.vitem .vleft.warn-t { color: var(--warn); }

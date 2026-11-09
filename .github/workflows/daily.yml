@@ -6,9 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       window_days:
-        description: "수집 기간(일). 최초 백필은 60 권장, 평시 3"
+        description: "수집 기간(일). 최초 백필 60, 평시 3 (최대 120)"
         required: false
         default: "3"
+      only_accounts:
+        description: "일부 계정만 (예: g1,nv). 비우면 전체"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -20,7 +24,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -35,22 +39,38 @@ jobs:
 
       - name: Check secrets
         env:
-          ACCOUNTS_JSON: ${{ secrets.ACCOUNTS_JSON }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL1_REFRESH_TOKEN: ${{ secrets.GMAIL1_REFRESH_TOKEN }}
+          GMAIL2_REFRESH_TOKEN: ${{ secrets.GMAIL2_REFRESH_TOKEN }}
+          NAVER_IMAP_USER: ${{ secrets.NAVER_IMAP_USER }}
+          NAVER_IMAP_PASSWORD: ${{ secrets.NAVER_IMAP_PASSWORD }}
         run: |
           missing=""
-          [ -z "$ACCOUNTS_JSON" ] && missing="$missing ACCOUNTS_JSON"
-          [ -z "$FIREBASE_DB_URL" ] && missing="$missing FIREBASE_DB_URL"
-          [ -z "$FIREBASE_SA_JSON" ] && missing="$missing FIREBASE_SA_JSON"
-          if [ -n "$missing" ]; then echo "::error::누락된 Secrets:$missing"; exit 1; fi
+          for v in FIREBASE_DB_URL FIREBASE_SA_JSON; do
+            [ -z "${!v}" ] && missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then echo "::error::필수 Secrets 누락:$missing"; exit 1; fi
+          for v in GMAIL_CLIENT_ID GMAIL_CLIENT_SECRET GMAIL1_REFRESH_TOKEN GMAIL2_REFRESH_TOKEN NAVER_IMAP_USER NAVER_IMAP_PASSWORD; do
+            [ -z "${!v}" ] && echo "::warning::$v 미설정 → 해당 계정 건너뜀"
+          done
+          exit 0
 
       - name: Collect
         env:
-          ACCOUNTS_JSON: ${{ secrets.ACCOUNTS_JSON }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL1_REFRESH_TOKEN: ${{ secrets.GMAIL1_REFRESH_TOKEN }}
+          GMAIL2_REFRESH_TOKEN: ${{ secrets.GMAIL2_REFRESH_TOKEN }}
+          NAVER_IMAP_USER: ${{ secrets.NAVER_IMAP_USER }}
+          NAVER_IMAP_PASSWORD: ${{ secrets.NAVER_IMAP_PASSWORD }}
           WINDOW_DAYS: ${{ github.event.inputs.window_days || '' }}
+          ONLY_ACCOUNTS: ${{ github.event.inputs.only_accounts || '' }}
           PYTHONUNBUFFERED: "1"
-        run: python collector/collect.py
+        run: |
+          export DASHBOARD_URL="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+          python collector/main.py
